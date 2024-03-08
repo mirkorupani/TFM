@@ -1,0 +1,16 @@
+{
+    "point": 31,
+    "hisFile": "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2011\\Santander_his.nc",
+    "predictors": {
+        "predictorsFolder": "F:\\TFM\\predictors",
+        "wind": "meteogalicia",
+        "hydro": {
+            "dataset_id": "cmems_mod_ibi_phy_my_0.083deg-2D_PT1H-m",
+            "point": [43.6, -3.742],
+            "variables": ["ubar", "vbar", "zos"]
+
+        }
+
+    }
+    
+}
