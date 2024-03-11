@@ -10,6 +10,7 @@ import os
 class Predictors():
     """Class to get and load the predictors for the model"""
 
+    # MeteoGalicia Thredds URL
     threddsURLMG = "https://mandeo.meteogalicia.es/thredds/dodsC/modelos/WRF_HIST/d02/"
 
 
@@ -18,10 +19,10 @@ class Predictors():
         with open(config) as f:
             self.config = json.load(f)
         
-        self.tempExt = getTempExt(self.config["hisFile"])
-        self.coord = getCoord(self.config["hisFile"], self.config["point"])
+        self.tempExt = getTempExt(self.config["predictands"]["hisFile"])
+        self.coord = getCoord(self.config["predictands"]["hisFile"], self.config["predictands"]["station"])
         self.windData = self.getWindData()
-        self.currentData = self.getCurrentData()
+        self.hydroData = self.getHydroData()
         self.dischargeData = self.getDischargeData()
     
 
@@ -59,8 +60,6 @@ class Predictors():
         if self.config["predictors"]["wind"] == "meteogalicia":
 
             windUrls = self.getWindURLs()
-
-            ### VER: creo que no está quedando bien la latitud y longitud final del punto
 
             # Define Lambert Conformal Conic projection
             lcc_proj = ccrs.LambertConformal(
@@ -103,6 +102,9 @@ class Predictors():
 
                 # If there are repeated times, keep only the last one
                 ds = ds.drop_duplicates("time", keep="last")
+
+                # Trim time to the temporal extension of the model
+                ds = ds.sel(time=slice(self.tempExt[0], self.tempExt[1]))
                     
                 # Write to netCDF
                 if writeNetCDF:
@@ -114,10 +116,14 @@ class Predictors():
             raise ValueError("Wind data source not recognized")
     
 
-    def getCurrentData(self, writeNetCDF=True):
+    def getHydroData(self, writeNetCDF=True, overwrite=False):
         """Downloads the hydrodynamic data
         :param writeNetCDF: bool, whether to write the hydrodynamic data to a netCDF file
         :return: xarray.Dataset, hydrodynamic data"""
+
+        # Check if file exists
+        if not overwrite and os.path.exists(os.path.join(self.config["predictors"]["predictorsFolder"], "hydroData.nc")):
+            return xr.open_dataset(os.path.join(self.config["predictors"]["predictorsFolder"], "hydroData.nc"))
 
         # Check if copernicusmarine-credentials already exists
         if not os.path.exists(os.path.join(os.path.expanduser("~"), ".copernicusmarine", ".copernicusmarine-credentials")):
@@ -137,6 +143,13 @@ class Predictors():
             )
         except:
             raise ValueError("Error downloading the hydrodynamic data from Copernicus Marine")
+        
+        # Remove latitude and longitude dimensions
+        for var in ds.data_vars:
+            if "latitude" in ds[var].dims:
+                ds[var] = ds[var].isel(latitude=0)
+            if "longitude" in ds[var].dims:
+                ds[var] = ds[var].isel(longitude=0)
 
         # Check for NaN values
         all_nan = True
@@ -149,11 +162,11 @@ class Predictors():
         
         # Write to netCDF
         if writeNetCDF:
-            ds.to_netcdf(os.path.join(self.config["predictors"]["predictorsFolder"], "currentData.nc"))
+            ds.to_netcdf(os.path.join(self.config["predictors"]["predictorsFolder"], "hydroData.nc"))
     
         return ds
     
 
-    def getDischargeData(self, writeNetCDF=True):
+    def getDischargeData(self, writeNetCDF=True, overwrite=False):
         pass
 
