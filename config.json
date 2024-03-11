@@ -1,6 +1,15 @@
 {
-    "point": 31,
-    "hisFile": "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2011\\Santander_his.nc",
+    "randomState": 42,
+    
+    "predictands": {
+        "predictandsFolder": "F:\\TFM\\predictands",
+        "station": 31,
+        "hisFile": "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2011\\Santander_his.nc",
+        "variables": ["u_x", "u_y", "waterlevel"],
+        "sigmaLayer": -0.1,
+        "resample": "mean"
+    },
+
     "predictors": {
         "predictorsFolder": "F:\\TFM\\predictors",
         "wind": "meteogalicia",
@@ -11,6 +20,31 @@
 
         }
 
+    },
+
+    "preprocess": {
+        "trainTestSplit": {
+            "method": "temporal",
+            "testSize": 0.2
+        },
+        "scale": {
+            "method": "standard"
+        },
+        "dimReduction": {
+            "method": "pca",
+            "nComponents": 0.95
+        }
+    },
+
+    "model": {
+        "method": "analogues",
+        "analogues": {
+            "clustering": "kMeans",
+            "nAnalogues": 500,
+            "distance": "euclidean",
+            "nNeighbors": 5,
+            "weights": "distance"
+        }
     }
     
 }
