@@ -31,7 +31,10 @@ def scatter_recon(model, reconstruction, title=None):
     plt.legend(loc='upper left')
 
 
-def combinedPlot(y, yPred, startIdx=0, title=None):
+def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None):
+    """Plot original data and predicted data, removing the first startIdx hours"""
+    
+    plt.figure(figsize=(15, 10))
     
     if startIdx > 0:
         y = y.iloc[startIdx:]
@@ -55,3 +58,6 @@ def combinedPlot(y, yPred, startIdx=0, title=None):
 
     if title:
         plt.suptitle(title)
+    
+    if savePath:
+        plt.savefig(savePath)
