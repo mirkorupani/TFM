@@ -22,7 +22,7 @@ class Predictands():
         :return: pandas.DataFrame, predictands"""
 
         station = self.config["predictands"]["station"]
-        filePath = os.path.join(folder,f"predictands_{station}.nc")
+        filePath = os.path.join(folder,f"Sta{station}predictands.nc")
 
         # Check if file exists
         if not overwrite and os.path.exists(filePath):
@@ -33,7 +33,7 @@ class Predictands():
 
             # Get hourly data
             if self.config["predictands"]["resample"] == "mean":
-                predictands = predictands.resample(time="H").mean()
+                predictands = predictands.resample(time="h").mean()
             else:
                 raise ValueError("Resample method not recognized")
         
