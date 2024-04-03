@@ -31,30 +31,41 @@ def scatter_recon(model, reconstruction, title=None):
     plt.legend(loc='upper left')
 
 
-def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None):
+def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False):
     """Plot original data and predicted data, removing the first startIdx hours"""
     
-    plt.figure(figsize=(15, 10))
+    plt.figure(figsize=(18, 15) if waterlevel else (15, 10))
     
     if startIdx > 0:
         y = y.iloc[startIdx:]
         yPred = yPred.iloc[startIdx:]
+    
+    nCols = 3 if waterlevel else 2
 
-    plt.subplot(2, 3, (1, 2))
+    plt.subplot(nCols, 3, (1, 2))
     plt.plot(y.index, y["u_x"], label="y")
     plt.plot(y.index, yPred["u_x"], label="yPred")
     plt.title("Original and Predicted u_x")
     plt.legend()
-    plt.subplot(2, 3, 3)
+    plt.subplot(nCols, 3, 3)
     scatter_recon(y["u_x"], yPred["u_x"], title="u_x")
 
-    plt.subplot(2, 3, (4, 5))
+    plt.subplot(nCols, 3, (4, 5))
     plt.plot(y.index, y["u_y"], label="y")
     plt.plot(y.index, yPred["u_y"], label="yPred")
     plt.title("Original and Predicted u_y")
     plt.legend()
-    plt.subplot(2, 3, 6)
+    plt.subplot(nCols, 3, 6)
     scatter_recon(y["u_y"], yPred["u_y"], title="u_y")
+
+    if waterlevel:
+        plt.subplot(nCols, 3, (7, 8))
+        plt.plot(y.index, y["waterlevel"], label="waterlevel")
+        plt.plot(y.index, yPred["waterlevel"], label="waterlevelPred")
+        plt.title("Original and Predicted waterlevel")
+        plt.legend()
+        plt.subplot(nCols, 3, 9)
+        scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel")
 
     if title:
         plt.suptitle(title)
