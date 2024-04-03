@@ -21,9 +21,12 @@ class Predictands():
         """Gets the predictands
         :return: pandas.DataFrame, predictands"""
 
+        station = self.config["predictands"]["station"]
+        filePath = os.path.join(folder,f"predictands_{station}.nc")
+
         # Check if file exists
-        if not overwrite and os.path.exists(os.path.join(folder,"predictands.nc")):
-            return xr.open_dataset(os.path.join(folder,"predictands.nc"))
+        if not overwrite and os.path.exists(filePath):
+            return xr.open_dataset(filePath)
         
         with xr.open_dataset(hisFile) as ds:
             predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
@@ -35,6 +38,6 @@ class Predictands():
                 raise ValueError("Resample method not recognized")
         
         if writeNetCDF:
-            predictands.to_netcdf(os.path.join(folder,"predictands.nc"))
+            predictands.to_netcdf(filePath)
         
         return predictands
