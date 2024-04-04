@@ -16,13 +16,13 @@ import json
 class RnnLstm():
     """Class to train an LSTM model from the prediction matrix"""
 
-    def __init__(self, config, predMatrix, nInput=10, stepSize=1):
+    def __init__(self, config, predMatrix):
         """Constructor of the class"""
         with open(config) as f:
             self.config = json.load(f)
         self.predMatrix = predMatrix
-        self.nInput = nInput
-        self.stepSize = stepSize
+        self.nTimesteps = self.config["model"]["lstm"]["nTimesteps"]
+        self.stepSize = self.config["model"]["lstm"]["stepSize"]
         self.nOutput = len(self.config["predictands"]["variables"])
         self.xTrainSeq, self.xTestSeq = self.preprocessData()
         self.model = self.trainModel()
@@ -37,19 +37,19 @@ class RnnLstm():
             xTest = pd.DataFrame(self.predMatrix.xTest, index=self.predMatrix.yTest.index)
 
         # Create an empty array to store the input sequences
-        xTrainSeq = np.empty((len(range(0, len(xTrain) - self.nInput + 1, self.stepSize)), self.nInput, xTrain.shape[1]))
+        xTrainSeq = np.empty((len(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)), self.nTimesteps, xTrain.shape[1]))
 
         # Create the input sequences
-        for i, idx in enumerate(range(0, len(xTrain) - self.nInput + 1, self.stepSize)):
-            xTrainSeq[i] = xTrain.iloc[idx:idx+self.nInput].values
+        for i, idx in enumerate(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)):
+            xTrainSeq[i] = xTrain.iloc[idx:idx+self.nTimesteps].values
 
         if newData is False:
             # Create an empty array to store the input sequences
-            xTestSeq = np.empty((len(range(0, len(xTest) - self.nInput + 1, self.stepSize)), self.nInput, xTest.shape[1]))
+            xTestSeq = np.empty((len(range(0, len(xTest) - self.nTimesteps + 1, self.stepSize)), self.nTimesteps, xTest.shape[1]))
 
             # Create the input sequences
-            for i, idx in enumerate(range(0, len(xTest) - self.nInput + 1, self.stepSize)):
-                xTestSeq[i] = xTest.iloc[idx:idx+self.nInput].values
+            for i, idx in enumerate(range(0, len(xTest) - self.nTimesteps + 1, self.stepSize)):
+                xTestSeq[i] = xTest.iloc[idx:idx+self.nTimesteps].values
         
         if newData is not False:
             return xTrainSeq
@@ -59,7 +59,7 @@ class RnnLstm():
 
     def trainModel(self):
         configHyperband = self.config["model"]["lstm"]["hyperband"]
-        inputShape = (self.nInput, self.predMatrix.xTrain.shape[1])
+        inputShape = (self.nTimesteps, self.predMatrix.xTrain.shape[1])
         model = HyperRegressor(inputShape, self.nOutput, self.config)
 
         # Define objective
@@ -78,7 +78,7 @@ class RnnLstm():
         )
 
         # Search for the best hyperparameters
-        tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nInput-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nInput-1::self.stepSize]))
+        tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
 
         # Get the best model
         bestHP = tuner.get_best_hyperparameters()[0]
@@ -88,8 +88,8 @@ class RnnLstm():
         configEarlyStopping = self.config["model"]["lstm"]["train"]["earlyStopping"]
         bestModel.fit(
             self.xTrainSeq,
-            self.predMatrix.yTrain[self.nInput-1::self.stepSize],
-            validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nInput-1::self.stepSize]),
+            self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize],
+            validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]),
             epochs=configHyperband["maxEpochs"],
             callbacks=[EarlyStopping(
                 monitor=configEarlyStopping["monitor"],
