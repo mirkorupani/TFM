@@ -35,13 +35,26 @@ class RnnLstm():
             # Convert xTrain and xTest to a pandas DataFrame
             xTrain = pd.DataFrame(self.predMatrix.xTrain, index=self.predMatrix.yTrain.index)
             xTest = pd.DataFrame(self.predMatrix.xTest, index=self.predMatrix.yTest.index)
-
+        
         # Create an empty array to store the input sequences
-        xTrainSeq = np.empty((len(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)), self.nTimesteps, xTrain.shape[1]))
+        if isinstance(self.config["predictands"]["hisFile"], list):
+            xTrainSeq = np.empty((len(range(0, len(xTrain) + len(self.config["predictands"]["hisFile"]) * (-self.nTimesteps + 1), self.stepSize)), self.nTimesteps, xTrain.shape[1]))
+                                 
+            # Create the input sequences
+            minTimeDiff = np.min(np.unique(np.diff(xTrain.index)))
+            timeDiff = minTimeDiff
+            i = 0
+            for period in range(len(self.config["predictands"]["hisFile"])):
+                while timeDiff == minTimeDiff:
+                    xTrainSeq[i] = xTrain.iloc[(period * self.nTimesteps)+i:(period * self.nTimesteps)+i+self.nTimesteps].values
+                    i += 1
+                    timeDiff = xTrain.index[i] - xTrain.index[i - 1]
+        else:
+            xTrainSeq = np.empty((len(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)), self.nTimesteps, xTrain.shape[1]))
 
-        # Create the input sequences
-        for i, idx in enumerate(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)):
-            xTrainSeq[i] = xTrain.iloc[idx:idx+self.nTimesteps].values
+            # Create the input sequences
+            for i, idx in enumerate(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)):
+                xTrainSeq[i] = xTrain.iloc[idx:idx+self.nTimesteps].values
 
         if newData is False:
             # Create an empty array to store the input sequences
@@ -78,7 +91,20 @@ class RnnLstm():
         )
 
         # Search for the best hyperparameters
-        tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+        if isinstance(self.config["predictands"]["hisFile"], list):
+            # Get the labels (yTrain) considering multiple historical files
+            timeDiff = np.diff(self.predMatrix.yTrain.index)
+            idx = np.where(timeDiff != np.min(np.unique(timeDiff)))[0]
+            yTrain = np.empty((len(self.xTrainSeq), self.nOutput))
+            for i in range(len(idx)):
+                if i == 0:
+                    yTrain[:idx[i]-self.nTimesteps+1] = self.predMatrix.yTrain[self.nTimesteps-1:idx[i]]
+                else:
+                    yTrain[idx[i-1]-i*(self.nTimesteps-1):idx[i]-i*(self.nTimesteps-1)] = self.predMatrix.yTrain[idx[i-1]+i*(self.nTimesteps-1):idx[i]+i*(self.nTimesteps-1)]
+            yTrain[idx[-1]-len(idx)*(self.nTimesteps-1):] = self.predMatrix.yTrain[idx[-1]+len(idx)*(self.nTimesteps-1):]
+            tuner.search(self.xTrainSeq, yTrain, validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+        else:
+            tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
 
         # Get the best model
         bestHP = tuner.get_best_hyperparameters()[0]
