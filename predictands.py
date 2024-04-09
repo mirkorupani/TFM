@@ -28,14 +28,21 @@ class Predictands():
         if not overwrite and os.path.exists(filePath):
             return xr.open_dataset(filePath)
         
-        with xr.open_dataset(hisFile) as ds:
-            predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
+        if isinstance(hisFile, list):
+            with xr.open_mfdataset(hisFile) as ds:
+                predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
+        else:
+            with xr.open_dataset(hisFile) as ds:
+                predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
 
-            # Get hourly data
-            if self.config["predictands"]["resample"] == "mean":
-                predictands = predictands.resample(time="h").mean()
-            else:
-                raise ValueError("Resample method not recognized")
+        # Get hourly data
+        if self.config["predictands"]["resample"] == "mean":
+            predictands = predictands.resample(time="h").mean()
+        else:
+            raise ValueError("Resample method not recognized")
+        
+        # Remove NaNs
+        predictands = predictands.dropna("time")
         
         if writeNetCDF:
             predictands.to_netcdf(filePath)
