@@ -22,8 +22,14 @@ class Predictors():
         
         if hisFile is None:
             folder = self.config["predictors"]["predictorsFolder"]
-            self.tempExt = getTempExt(self.config["predictands"]["hisFile"])
-            self.coord = getCoord(self.config["predictands"]["hisFile"], self.config["predictands"]["station"])
+            if isinstance(self.config["predictands"]["hisFile"], list):
+                self.tempExt = list()
+                for hisFile in self.config["predictands"]["hisFile"]:
+                    self.tempExt.append(getTempExt(hisFile))
+                self.coord = getCoord(self.config["predictands"]["hisFile"][0], self.config["predictands"]["station"])
+            else:
+                self.tempExt = getTempExt(self.config["predictands"]["hisFile"])
+                self.coord = getCoord(self.config["predictands"]["hisFile"], self.config["predictands"]["station"])
             
         else:
             self.tempExt = getTempExt(hisFile)
@@ -39,28 +45,58 @@ class Predictors():
         :return: list, URLs to download the wind data"""
 
         # Expand the temporal extension one hour
-        iniDate = self.tempExt[0] - pd.Timedelta(hours=1)
-        endDate = self.tempExt[1] + pd.Timedelta(hours=1)
+        if isinstance(self.tempExt, list):
+            iniDate = list()
+            endDate = list()
+            for i in range(len(self.tempExt)):
+                iniDate.append(self.tempExt[i][0] - pd.Timedelta(hours=1))
+                endDate.append(self.tempExt[i][1] + pd.Timedelta(hours=1))
+        else:
+            iniDate = self.tempExt[0] - pd.Timedelta(hours=1)
+            endDate = self.tempExt[1] + pd.Timedelta(hours=1)
 
         # Get the files
         urls = []
-        for year in range(iniDate.year, endDate.year+1):
-            for month in range(1, 13):
-                if year == iniDate.year and month < iniDate.month:
-                    continue
-                if year == endDate.year and month > endDate.month:
-                    continue
-                # Get number of days in the month
-                days = calendar.monthrange(year, month)[1]
-                for day in range(1, days+1):
-                    if year == iniDate.year and month == iniDate.month and day < iniDate.day:
+        if isinstance(iniDate, list):
+            for i in range(len(iniDate)):
+                for year in range(iniDate[i].year, endDate[i].year+1):
+                    for month in range(1, 13):
+                        if year == iniDate[i].year and month < iniDate[i].month:
+                            continue
+                        if year == endDate[i].year and month > endDate[i].month:
+                            continue
+                        # Get number of days in the month
+                        days = calendar.monthrange(year, month)[1]
+                        for day in range(1, days+1):
+                            if year == iniDate[i].year and month == iniDate[i].month and day < iniDate[i].day:
+                                continue
+                            if year == endDate[i].year and month == endDate[i].month and day > endDate[i].day:
+                                continue
+                            urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_0000.nc4")
+                            if (year > 2013) or (year == 2013 and month > 1) or (year == 2013 and month == 1 and day > 27):
+                                if year == 2013 and month == 2 and day == 23:
+                                    continue
+                                urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_1200.nc4")
+        else:
+            for year in range(iniDate.year, endDate.year+1):
+                for month in range(1, 13):
+                    if year == iniDate.year and month < iniDate.month:
                         continue
-                    if year == endDate.year and month == endDate.month and day > endDate.day:
+                    if year == endDate.year and month > endDate.month:
                         continue
-                    urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_0000.nc4")
-                    if (year > 2013) or (year == 2013 and month > 1) or (year == 2013 and month == 1 and day > 27):
-                        urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_1200.nc4")
-        
+                    # Get number of days in the month
+                    days = calendar.monthrange(year, month)[1]
+                    for day in range(1, days+1):
+                        if year == iniDate.year and month == iniDate.month and day < iniDate.day:
+                            continue
+                        if year == endDate.year and month == endDate.month and day > endDate.day:
+                            continue
+                        urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_0000.nc4")
+                        if (year > 2013) or (year == 2013 and month > 1) or (year == 2013 and month == 1 and day > 27):
+                            if year == 2013 and month == 2 and day == 23:
+                                    continue
+                            urls.append(f"{self.threddsURLMG}{year}/{month:02d}/wrf_arw_det_history_d02_{year}{month:02d}{day:02d}_1200.nc4")
+
         return urls
 
 
@@ -120,11 +156,28 @@ class Predictors():
                 ds = ds.drop_duplicates("time", keep="last")
 
                 # Trim time to the temporal extension
-                ds = ds.sel(time=slice(self.tempExt[0], self.tempExt[1]))
+                if isinstance(self.tempExt, list):
+                    dsList = []
+                    for i in range(len(self.tempExt)):
+                        dsList.append(ds.sel(time=slice(self.tempExt[i][0], self.tempExt[i][1])))
+                    ds = xr.concat(dsList, dim="time")
+                else:
+                    ds = ds.sel(time=slice(self.tempExt[0], self.tempExt[1]))
                     
                 # Write to netCDF
                 if writeNetCDF:
-                    ds.to_netcdf(os.path.join(folder,"windData.nc"))
+                    try:
+                        ds.to_netcdf(os.path.join(folder, "windData.nc"))
+                    except:
+                       # Save each variable separately
+                        for var_name in ds.data_vars:
+                            ds[var_name].to_netcdf(os.path.join(folder, f'{var_name}.nc'))
+                        # Merge the variables
+                        ds = xr.merge([xr.open_dataset(os.path.join(folder, f'{var_name}.nc')) for var_name in ds.data_vars])
+                        ds.to_netcdf(os.path.join(folder, "windData.nc"))
+                        # Remove temporary files
+                        # for var_name in ds.data_vars:
+                        #     os.remove(os.path.join(folder, f'{var_name}.nc'))
     
             return ds
         
@@ -146,17 +199,34 @@ class Predictors():
             copernicusmarine.login()
 
         try:
-            ds = copernicusmarine.open_dataset(
-                dataset_id=self.config["predictors"]["hydro"]["dataset_id"],
-                maximum_longitude=self.config["predictors"]["hydro"]["point"][1],
-                minimum_longitude=self.config["predictors"]["hydro"]["point"][1],
-                maximum_latitude=self.config["predictors"]["hydro"]["point"][0],
-                minimum_latitude=self.config["predictors"]["hydro"]["point"][0],
-                start_datetime=self.tempExt[0],
-                end_datetime=self.tempExt[1],
-                variables=self.config["predictors"]["hydro"]["variables"]
-
-            )
+            # Check if temporal extension is a list
+            if isinstance(self.tempExt, list):
+                dsList = []
+                for i in range(len(self.tempExt)):
+                    ds = copernicusmarine.open_dataset(
+                        dataset_id=self.config["predictors"]["hydro"]["dataset_id"],
+                        maximum_longitude=self.config["predictors"]["hydro"]["point"][1],
+                        minimum_longitude=self.config["predictors"]["hydro"]["point"][1],
+                        maximum_latitude=self.config["predictors"]["hydro"]["point"][0],
+                        minimum_latitude=self.config["predictors"]["hydro"]["point"][0],
+                        start_datetime=self.tempExt[i][0],
+                        end_datetime=self.tempExt[i][1],
+                        variables=self.config["predictors"]["hydro"]["variables"]
+                    )
+                    dsList.append(ds)
+                ds = xr.concat(dsList, dim="time")
+                ds = ds.drop_duplicates("time", keep="first")
+            else:
+                ds = copernicusmarine.open_dataset(
+                    dataset_id=self.config["predictors"]["hydro"]["dataset_id"],
+                    maximum_longitude=self.config["predictors"]["hydro"]["point"][1],
+                    minimum_longitude=self.config["predictors"]["hydro"]["point"][1],
+                    maximum_latitude=self.config["predictors"]["hydro"]["point"][0],
+                    minimum_latitude=self.config["predictors"]["hydro"]["point"][0],
+                    start_datetime=self.tempExt[0],
+                    end_datetime=self.tempExt[1],
+                    variables=self.config["predictors"]["hydro"]["variables"]
+                )
         except:
             raise ValueError("Error downloading the hydrodynamic data from Copernicus Marine")
         
