@@ -19,6 +19,9 @@ class PredictSation():
         predictands = Predictands(self.configFilePath)
         predMatrix = PredictionMatrix(self.configFilePath, predictors, predictands)
 
+        print("Training model...")
+        elapsedTime = time()
+
         if self.config["model"]["method"] == "analogues":
             from analogues import Analogues
             self.model = Analogues(self.configFilePath, predMatrix)
@@ -30,6 +33,9 @@ class PredictSation():
         elif self.config["model"]["method"] == "lstm":
             from lstm import RnnLstm
             self.model = RnnLstm(self.configFilePath, predMatrix)
+        
+        elapsedTime = time() - elapsedTime
+        print(f"Training time: {elapsedTime/60} minutes")
     
 
     def predict(self, newHisFile, newPredictorsFolder="newPredictors", newPredictandsFolder="newPredictands"):
@@ -75,11 +81,10 @@ class PredictSation():
         
         if self.config["model"]["method"] == "adaboost":
             bestParams = pd.DataFrame()
-            for var in self.model.model[var].columns:
+            for var in self.model.model.keys():
                 bestParamsDict = self.model.model[var].best_params_
                 bestParamsDict = {key: [value] for key, value in bestParamsDict.items()}
                 bestParams[var] = pd.DataFrame(bestParamsDict).T
-            bestParams.to_csv(f"{savePath[:-5]}BestParams.csv")
 
 
 if __name__ == "__main__":
@@ -88,14 +93,10 @@ if __name__ == "__main__":
     predictStation = PredictSation(configFilePath)
 
     # Train model
-    print("Training model...")
-    elapsedTime = time()
     predictStation.train()
-    elapsedTime = time() - elapsedTime
-    print(f"Training time: {elapsedTime/60} minutes")
 
     # Predict new data
-    newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2012\\Santander_his.nc"
+    newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2013\\Santander_his.nc"
     y, yPred = predictStation.predict(newHisFile)
 
     # Plot results
