@@ -25,7 +25,13 @@ class PredictionMatrix():
         predictors = self.predictors if not newPredictors else newPredictors
             
         # Get the time series
-        timeSeries = pd.date_range(predictors.tempExt[0], predictors.tempExt[1], freq="h")
+        if isinstance(predictors.tempExt, list):
+            # Concatenate the time series
+            timeSeries = pd.date_range(predictors.tempExt[0][0], predictors.tempExt[0][1], freq="h")
+            for i in range(1, len(predictors.tempExt)):
+                timeSeries = timeSeries.append(pd.date_range(predictors.tempExt[i][0], predictors.tempExt[i][1], freq="h"))
+        else:
+            timeSeries = pd.date_range(predictors.tempExt[0], predictors.tempExt[1], freq="h")
 
         # Predictors
         x = pd.DataFrame(index=timeSeries)
