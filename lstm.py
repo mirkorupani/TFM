@@ -37,7 +37,7 @@ class RnnLstm():
             xTest = pd.DataFrame(self.predMatrix.xTest, index=self.predMatrix.yTest.index)
         
         # Create an empty array to store the input sequences
-        if isinstance(self.config["predictands"]["hisFile"], list):
+        if isinstance(self.config["predictands"]["hisFile"], list) and newData is False:
             xTrainSeq = np.empty((len(range(0, len(xTrain) + len(self.config["predictands"]["hisFile"]) * (-self.nTimesteps + 1), self.stepSize)), self.nTimesteps, xTrain.shape[1]))
                                  
             # Create the input sequences
@@ -111,18 +111,31 @@ class RnnLstm():
         bestModel = model.build(bestHP)
         
         # Fit the best model
-        configEarlyStopping = self.config["model"]["lstm"]["train"]["earlyStopping"]
-        bestModel.fit(
-            self.xTrainSeq,
-            self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize],
-            validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]),
-            epochs=configHyperband["maxEpochs"],
-            callbacks=[EarlyStopping(
-                monitor=configEarlyStopping["monitor"],
-                patience=configEarlyStopping["patience"],
-                restore_best_weights=True
-                )]
-        )
+        if isinstance(self.config["predictands"]["hisFile"], list):
+            bestModel.fit(
+                self.xTrainSeq,
+                yTrain,
+                validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]),
+                epochs=configHyperband["maxEpochs"],
+                callbacks=[EarlyStopping(
+                    monitor=self.config["model"]["lstm"]["train"]["earlyStopping"]["monitor"],
+                    patience=self.config["model"]["lstm"]["train"]["earlyStopping"]["patience"],
+                    restore_best_weights=True
+                    )]
+            )
+        else:
+            configEarlyStopping = self.config["model"]["lstm"]["train"]["earlyStopping"]
+            bestModel.fit(
+                self.xTrainSeq,
+                self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize],
+                validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]),
+                epochs=configHyperband["maxEpochs"],
+                callbacks=[EarlyStopping(
+                    monitor=configEarlyStopping["monitor"],
+                    patience=configEarlyStopping["patience"],
+                    restore_best_weights=True
+                    )]
+            )
 
         return bestModel
 
