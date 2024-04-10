@@ -1,5 +1,5 @@
 import json
-from auxFunc import getTempExt, getCoord
+from auxFunc import getTempExt, getCoord, datenumToDatetime
 import calendar
 import xarray as xr
 import copernicusmarine
@@ -7,6 +7,8 @@ import cartopy.crs as ccrs
 import numpy as np
 import os
 import pandas as pd
+import scipy.io as sio
+from scipy.signal import find_peaks
 
 class Predictors():
     """Class to get and load the predictors for the model"""
@@ -38,6 +40,7 @@ class Predictors():
         self.windData = self.getWindData(folder=folder)
         self.hydroData = self.getHydroData(folder=folder)
         self.dischargeData = self.getDischargeData(folder=folder)
+        self.tidalRangeData = self.getTidalRangeData(folder=folder)
     
 
     def getWindURLs(self):
@@ -255,4 +258,61 @@ class Predictors():
 
     def getDischargeData(self, writeNetCDF=True, overwrite=False, folder="predictors"):
         pass
+
+
+    def getTidalRangeData(self, writeNetCDF=True, overwrite=False, folder="predictors"):
+
+        # Check if file exists
+        if not overwrite and os.path.exists(os.path.join(folder, "tidalRangeData.nc")):
+            return xr.open_dataset(os.path.join(folder, "tidalRangeData.nc"))
+                                   
+        # Import tide gauge mat file
+        data = sio.loadmat(self.config["predictors"]["tidalRange"])
+        time = np.array(datenumToDatetime(data["Date"]))
+        astronomicTide = data["Ma"]
+        # Trim time to the temporal extension
+        if isinstance(self.tempExt, list):
+            idx = np.where((time >= self.tempExt[0][0].to_pydatetime()) & (time <= self.tempExt[-1][1].to_pydatetime()))[0]
+        else:
+            idx = np.where((time >= self.tempExt[0].to_pydatetime()) & (time <= self.tempExt[1].to_pydatetime()))[0]
+        time = time[idx]
+        astronomicTide = astronomicTide[idx]
+        peaks, _ = find_peaks(astronomicTide.flatten())
+        valleys, _ = find_peaks(-astronomicTide.flatten())
+        # Concatenate peaks and valleys
+        peaks = np.sort(np.concatenate((peaks, valleys)))
+
+        # Calculate tidal range
+        tidalRange = np.empty(len(astronomicTide))
+        for i in range(len(tidalRange)):
+            if i in peaks:
+                tidalRange[i] = np.nan
+                continue
+            beforePeak = peaks[np.where(peaks < i)]
+            afterPeak = peaks[np.where(peaks > i)]
+            if len(beforePeak) == 0 or len(afterPeak) == 0:
+                tidalRange[i] = np.nan
+            else:
+                tidalRange[i] = astronomicTide[afterPeak[0]] - astronomicTide[beforePeak[-1]]
+        # Make all values positive
+        tidalRange = np.abs(tidalRange)
+        # Assign closest non-nan value to nan values
+        nanIdx = np.where(np.isnan(tidalRange))[0]
+        notNanIdx = np.where(~np.isnan(tidalRange))[0]
+        for i in nanIdx:
+            tidalRange[i] = tidalRange[notNanIdx[np.argmin(np.abs(i - notNanIdx))]]
+        
+        # Create xarray.Dataset
+        ds = xr.Dataset(
+            {
+                "tidalRange": (("time",), tidalRange)
+            },
+            coords={"time": pd.to_datetime(time)},
+        )
+
+        # Write to netCDF
+        if writeNetCDF:
+            ds.to_netcdf(os.path.join(folder, "tidalRangeData.nc"))
+
+        return ds
 
