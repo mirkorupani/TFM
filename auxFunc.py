@@ -1,6 +1,8 @@
 import xarray as xr
 import cartopy.crs as ccrs
 import pandas as pd
+import numpy as np
+import datetime
 
 def getTempExt(netcdf_file):
     """
@@ -31,3 +33,40 @@ def getCoord(netcdf_file, point, srcProj=ccrs.epsg(32630)):
     lon, lat = proj.transform_point(x, y, srcProj)
 
     return lat, lon
+
+
+def datenumToDatetime(datenum):
+    """Converts datenum to datetime
+    Args:
+        datenum: datenum
+        Returns:
+        datetime.datetime"""
+    try:
+        iter(datenum)
+        is_iter = True
+    except TypeError:
+        is_iter = False
+
+    if is_iter:
+        days = np.floor(datenum).astype(int)
+        frac_days = datenum - days
+        datetime_list = [datetime.datetime.fromordinal(int(d) - 366) + datetime.timedelta(days=int(d % 1)) for d in
+                         days]
+        datetime_list = [dt + datetime.timedelta(microseconds=int(frac_day * 24 * 60 * 60 * 1000000)) for dt, frac_day
+                         in zip(datetime_list, frac_days)]
+        
+        # Round to seconds
+        datetime_list = [dt.replace(microsecond=0) for dt in datetime_list]
+
+        return datetime_list
+
+    else:
+        days = np.floor(datenum).astype(int)
+        frac_days = datenum - days
+        datetime_obj = datetime.datetime.fromordinal(int(days) - 366) + datetime.timedelta(days=int(frac_days % 1))
+        datetime_obj += datetime.timedelta(microseconds=int(frac_days * 24 * 60 * 60 * 1000000))
+
+        # Round to seconds
+        datetime_obj = datetime_obj.replace(microsecond=0)
+
+        return datetime_obj
