@@ -19,7 +19,7 @@
             "variables": ["ubar", "vbar", "zos"]
 
         },
-        "tidalRange": "F:\\TFM_input\\REDMAR_Santander_PdE.mat"
+        "tidalRange": null
     },
 
     "preprocess": {
@@ -37,14 +37,22 @@
     },
 
     "model": {
-        "method": "lstm",
+        "method": "analogues",
 
         "analogues": {
             "clustering": "spectral",
             "nAnalogues": 500,
-            "distance": "euclidean",
-            "nNeighbors": 5,
-            "weights": "distance"
+            "regressor": "knn",
+            "knn": {
+                "n_neighbors": 5,
+                "weights": "distance",
+                "metric": "minkowski"
+            },
+            "krr": {
+                "kernel": "rbf",
+                "alpha": 1,
+                "gamma": null
+            }
         },
 
         "adaBoost": {
