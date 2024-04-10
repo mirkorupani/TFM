@@ -47,7 +47,9 @@ class PredictSation():
         x = pd.DataFrame(x, index=y.index)
         
         if self.config["model"]["method"] == "analogues":
-            yPred = self.model.predict(x)
+            yPred = self.model.regressor.predict(x)
+            # Convert yPred to a DataFrame
+            yPred = pd.DataFrame(yPred, index=y.index, columns=y.columns)
         
         elif self.config["model"]["method"] == "adaboost":
             yPred = pd.DataFrame(index=y.index)
