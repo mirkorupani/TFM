@@ -41,6 +41,8 @@ class PredictionMatrix():
             x["u10"] = predictors.windData.u
             x["v10"] = predictors.windData.v
             x["slp"] = predictors.windData.mslp
+        elif self.config["predictors"]["wind"] == None:
+            pass
         else:
             raise ValueError("Wind data source not recognized")
 
@@ -50,6 +52,10 @@ class PredictionMatrix():
 
         # Add the discharge data
         pass
+
+        # Add the tidal range data
+        if self.config["predictors"]["tidalRange"] is not None:
+            x["tidalRange"] = predictors.tidalRangeData.tidalRange
 
         if newPredictors and not newPredictands:
             return x
