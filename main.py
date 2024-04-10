@@ -96,7 +96,7 @@ if __name__ == "__main__":
     predictStation.train()
 
     # Predict new data
-    newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2013\\Santander_his.nc"
+    newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2012\\Santander_his.nc"
     y, yPred = predictStation.predict(newHisFile)
 
     # Plot results

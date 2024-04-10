@@ -1,7 +1,8 @@
 import json
 from sklearn.cluster import KMeans, SpectralClustering
 from mdapy import max_diss_alg
-from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.kernel_ridge import KernelRidge
 import numpy as np
 import pandas as pd
 
@@ -16,7 +17,7 @@ class Analogues():
         self.predMatrix = predictionMatrix
         self.clustering = self.getClustering()
         self.centroids, self.xAnalogues, self.yAnalogues = self.getAnalogues()
-        self.classifier = self.getClassifier()
+        self.regressor = self.getRegressor()
 
 
     def getClustering(self):
@@ -62,34 +63,20 @@ class Analogues():
         return centroids, self.predMatrix.xTrain[centroids], self.predMatrix.yTrain.iloc[centroids]
     
 
-    def getClassifier(self):
-        """Gets the classifier
-        :return: sklearn.neighbors.KNeighborsClassifier, classifier"""
+    def getRegressor(self):
+        """Gets the regressor
+        :return: sklearn.neighbors.KNeighborsRegressor, regressor"""
 
-        classifier = KNeighborsClassifier(n_neighbors=self.config["model"]["analogues"]["nNeighbors"], weights=self.config["model"]["analogues"]["weights"])
+        regressorType = self.config["model"]["analogues"]["regressor"]
+        regressorConfig = self.config["model"]["analogues"][regressorType]
 
-        if self.config["model"]["analogues"]["clustering"] == "kMeans":
-            return classifier.fit(self.clustering.cluster_centers_, self.centroids)
-        elif self.config["model"]["analogues"]["clustering"] == "maxDiss":
-            return classifier.fit(self.clustering[0], self.centroids)
-        elif self.config["model"]["analogues"]["clustering"] == "spectral":
-            return classifier.fit(self.predMatrix.xTrain, self.clustering.labels_)
+        if regressorType == "knn":
+            regressor = KNeighborsRegressor(**regressorConfig)
+
+        elif self.config["model"]["analogues"]["regressor"] == "krr":
+            regressor = KernelRidge(**regressorConfig)
+            
+        else:
+            raise ValueError("Regressor not recognized")
         
-
-    def predict(self, x):
-        """Predicts the analogues
-        :param x: pandas.DataFrame or numpy.ndarray, predictors
-        :return: pandas.DataFrame or numpy.ndarray, analogues prediction
-        """
-
-        probMatrix = self.classifier.predict_proba(x)
-        if isinstance(x, np.ndarray):
-            prediction = np.empty((x.shape[0], self.yAnalogues.shape[1]))
-            for i in range(prediction.shape[0]):
-                prediction[i] = np.dot(probMatrix[i], self.yAnalogues)
-        elif isinstance(x, pd.DataFrame):
-            prediction = pd.DataFrame(index=x.index, columns=self.yAnalogues.columns)
-            for i in range(prediction.shape[0]):
-                prediction.iloc[i] = np.dot(probMatrix[i], self.yAnalogues)
-        
-        return prediction
+        return regressor.fit(self.xAnalogues, self.yAnalogues)
