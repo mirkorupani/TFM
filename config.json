@@ -5,6 +5,7 @@
         "predictandsFolder": "F:\\TFM\\predictands",
         "station": 1,
         "hisFile": "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2011\\Santander_his.nc",
+        "removeTimesteps": 24,
         "variables": ["u_x", "u_y", "waterlevel"],
         "sigmaLayer": -0.1,
         "resample": "mean"
@@ -19,7 +20,7 @@
             "variables": ["ubar", "vbar", "zos"]
 
         },
-        "tidalRange": null
+        "tidalRange": "F:\\TFM_input\\REDMAR_Santander_PdE.mat"
     },
 
     "preprocess": {
@@ -72,7 +73,7 @@
         },
 
         "lstm": {
-            "nTimesteps": 5,
+            "nTimesteps": 10,
             "stepSize": 1,
             "lstmLayers": {
                 "minLstmLayers": 1,

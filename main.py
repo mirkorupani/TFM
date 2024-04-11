@@ -38,10 +38,10 @@ class PredictSation():
         print(f"Training time: {elapsedTime/60} minutes")
     
 
-    def predict(self, newHisFile, newPredictorsFolder="newPredictors", newPredictandsFolder="newPredictands"):
+    def predict(self, newHisFile, newPredictorsFolder="newPredictors", newPredictandsFolder="newPredictands", removeTimesteps=None):
         newPredictors = Predictors(self.configFilePath, hisFile=newHisFile, folder=newPredictorsFolder)
         newPredictands = Predictands(self.configFilePath, hisFile=newHisFile, folder=newPredictandsFolder)
-        x, y = self.model.predMatrix.getPredMatrix(newPredictors=newPredictors, newPredictands=newPredictands)
+        x, y = self.model.predMatrix.getPredMatrix(newPredictors=newPredictors, newPredictands=newPredictands, removeTimesteps=removeTimesteps)
         x = self.model.predMatrix.preprocessData(x)
         # Convert x to a pandas DataFrame
         x = pd.DataFrame(x, index=y.index)
@@ -99,10 +99,21 @@ if __name__ == "__main__":
 
     # Predict new data
     newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2012\\Santander_his.nc"
-    y, yPred = predictStation.predict(newHisFile)
+    y, yPred = predictStation.predict(newHisFile, removeTimesteps=24)
 
     # Plot results
-    predictStation.plotResults(y, yPred, startIdx=48, savePath=f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Validation.png")
+    predictStation.plotResults(y, yPred, savePath=f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Validation.png", waterlevel=True)
 
     # Save config
     predictStation.saveConfig(f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Config.json")
+
+    # If adaBoost, export best parameters to csv
+    if predictStation.config["model"]["method"] == "adaboost":
+        bestParams = pd.DataFrame()
+        for var in predictStation.model.model.keys():
+            bestParams[var] = predictStation.model.model["u_x"].best_params_
+        bestParams.to_csv(f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}BestParams.csv")
+    
+    # If lstm, export hyperparameters to csv
+    if predictStation.config["model"]["method"] == "lstm":
+        pass
