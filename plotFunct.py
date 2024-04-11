@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
+from auxFunc import willmottSkillIndex
 
 
 def scatter_recon(model, reconstruction, title=None):
@@ -22,7 +23,8 @@ def scatter_recon(model, reconstruction, title=None):
     # Add MAE and bias with white alpha background
     mae = mean_absolute_error(model, reconstruction)
     bias = np.mean(model - reconstruction)
-    plt.text(0.95, 0.05, f"MAE = {mae:.2g}\n bias = {bias:.2g}", ha='right', va='center', transform=plt.gca().transAxes)
+    skillIndex = willmottSkillIndex(model, reconstruction)
+    plt.text(0.95, 0.1, f"MAE = {mae:.2g}\n bias = {bias:.2g}\n skill index = {skillIndex:.2g}", ha='right', va='center', transform=plt.gca().transAxes)
 
     # Add title
     if title:
