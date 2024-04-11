@@ -18,9 +18,14 @@ class PredictionMatrix():
         self.preprocessData()
 
 
-    def getPredMatrix(self, newPredictors=False, newPredictands=False):
+    def getPredMatrix(self, newPredictors=False, newPredictands=False, removeTimesteps=None):
         """Gets the prediction matrix
         :return: pandas.DataFrame, prediction matrix"""
+
+        # Time steps to remove
+        if removeTimesteps is None:
+            if not newPredictors:
+                removeTimesteps = self.config["predictands"]["removeTimesteps"]
 
         predictors = self.predictors if not newPredictors else newPredictors
             
@@ -58,6 +63,8 @@ class PredictionMatrix():
             x["tidalRange"] = predictors.tidalRangeData.tidalRange
 
         if newPredictors and not newPredictands:
+            if removeTimesteps is not None:
+                return x.iloc[removeTimesteps-1:]
             return x
         
         else:
@@ -67,14 +74,17 @@ class PredictionMatrix():
             for var in self.config["predictands"]["variables"]:
                 y[var] = predictands.predictands[var]
 
+            if removeTimesteps is not None:
+                return x.iloc[removeTimesteps-1:], y.iloc[removeTimesteps-1:]
             return x, y
     
 
     def preprocessData(self, newPredMatrix=False):
         """Preprocesses the data
         :return: tuple, (xTrain, xTest, yTrain, yTest)"""
-        
+
         if newPredMatrix is False:
+
             # Split the data
             self.xTrain, self.xTest, self.yTrain, self.yTest = self.splitData()
 
@@ -112,12 +122,16 @@ class PredictionMatrix():
         if self.config["preprocess"]["scale"]["method"] == "standard":
             scaler = StandardScaler()
             xTrain = scaler.fit_transform(self.xTrain)
-            xTest = scaler.transform(self.xTest)
+            if self.xTest is not None:
+                xTest = scaler.transform(self.xTest)
         
         elif self.config["preprocess"]["scaling"]["method"] == None:
             return self.xTrain, self.xTest
         
-        return scaler, xTrain, xTest
+        if self.xTest is not None:
+            return scaler, xTrain, xTest
+        else:
+            return scaler, xTrain, None
     
 
     def dimReduction(self):
@@ -128,14 +142,19 @@ class PredictionMatrix():
         if self.config["preprocess"]["dimReduction"]["method"] == "pca":
             model = PCA(n_components=self.config["preprocess"]["dimReduction"]["nComponents"])
             xTrain = model.fit_transform(self.xTrain)
-            xTest = model.transform(self.xTest)
+            if self.xTest is not None:
+                xTest = model.transform(self.xTest)
         
         elif self.config["preprocess"]["dimReduction"]["method"] == "isomap":
             model = Isomap(n_components=self.config["preprocess"]["dimReduction"]["nComponents"])
             xTrain = model.fit_transform(self.xTrain)
-            xTest = model.transform(self.xTest)
+            if self.xTest is not None:
+                xTest = model.transform(self.xTest)
 
         elif self.config["preprocess"]["dimReduction"]["method"] == None:
             return self.yTrain, self.yTest
         
-        return model, xTrain, xTest
+        if self.xTest is not None:
+            return model, xTrain, xTest
+        else:
+            return model, xTrain, None
