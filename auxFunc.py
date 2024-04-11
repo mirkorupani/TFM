@@ -70,3 +70,27 @@ def datenumToDatetime(datenum):
         datetime_obj = datetime_obj.replace(microsecond=0)
 
         return datetime_obj
+
+
+def willmottSkillIndex(data, dataRecon, returnNumDen=False):
+
+    if hasattr(data, 'to_numpy'):
+        xo = data.to_numpy()
+    else:
+        xo = data
+
+    if hasattr(dataRecon, 'to_numpy'):
+        xs = dataRecon.to_numpy()
+    else:
+        xs = dataRecon
+
+    xo = np.squeeze(xo)
+    xs = np.squeeze(xs)
+
+    a = np.sum(np.square(xs - xo), axis=0)
+    b = np.sum(np.square(np.abs(xs - np.nanmean(xo, axis=0)) + np.abs(xo - np.nanmean(xo, axis=0))), axis=0)
+
+    if returnNumDen:
+        return a, b
+    else:
+        return 1 - a / b
