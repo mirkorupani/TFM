@@ -196,7 +196,7 @@ class HyperRegressor(kt.HyperModel):
         if configTrain["optimizer"] == "adam":
             optimizer = Adam(hp.Choice('learningRate', configTrain["learningRates"]))
         elif configTrain["optimizer"] == "sgd":
-            optimizer = SGD(hp.Choice('learningRate', configTrain["learningRates"]))
+            optimizer = SGD(hp.Choice('learningRate', configTrain["learningRates"]), momentum=0.9)
         elif configTrain["optimizer"] == "rmsprop":
             optimizer = RMSprop(hp.Choice('learningRate', configTrain["learningRates"]))
         model.compile(optimizer=optimizer,
