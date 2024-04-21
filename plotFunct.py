@@ -4,7 +4,7 @@ from sklearn.metrics import mean_absolute_error
 from auxFunc import willmottSkillIndex, ksStatistic, pearsonCorrCoeff
 
 
-def scatter_recon(model, reconstruction, title=None):
+def scatter_recon(model, reconstruction, title=None, returnMetrics=False):
     plt.scatter(model, reconstruction, alpha=0.5)
     plt.xlabel('Model')
     plt.ylabel('Reconstruction')
@@ -34,9 +34,19 @@ def scatter_recon(model, reconstruction, title=None):
 
     plt.legend(loc='upper left')
 
+    if returnMetrics:
+        return mae, bias, skillIndex, kolmogorovSmirnov, pearson
 
-def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False):
+
+def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, returnMetrics=False):
     """Plot original data and predicted data, removing the first startIdx hours"""
+
+    if returnMetrics:
+        mae = {}
+        bias = {}
+        skillIndex = {}
+        kolmogorovSmirnov = {}
+        pearson = {}
     
     plt.figure(figsize=(18, 15) if waterlevel else (15, 10))
     
@@ -52,7 +62,10 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
     plt.title("Original and Predicted u_x")
     plt.legend()
     plt.subplot(nCols, 3, 3)
-    scatter_recon(y["u_x"], yPred["u_x"], title="u_x")
+    if returnMetrics:
+        mae["u_x"], bias["u_x"], skillIndex["u_x"], kolmogorovSmirnov["u_x"], pearson["u_x"] = scatter_recon(y["u_x"], yPred["u_x"], title="u_x", returnMetrics=returnMetrics)
+    else:
+        scatter_recon(y["u_x"], yPred["u_x"], title="u_x")
 
     plt.subplot(nCols, 3, (4, 5))
     plt.plot(y.index, y["u_y"], label="y")
@@ -60,7 +73,10 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
     plt.title("Original and Predicted u_y")
     plt.legend()
     plt.subplot(nCols, 3, 6)
-    scatter_recon(y["u_y"], yPred["u_y"], title="u_y")
+    if returnMetrics:
+        mae["u_y"], bias["u_y"], skillIndex["u_y"], kolmogorovSmirnov["u_y"], pearson["u_y"] = scatter_recon(y["u_y"], yPred["u_y"], title="u_y", returnMetrics=returnMetrics)
+    else:
+        scatter_recon(y["u_y"], yPred["u_y"], title="u_y", returnMetrics=returnMetrics)
 
     if waterlevel:
         plt.subplot(nCols, 3, (7, 8))
@@ -69,10 +85,16 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
         plt.title("Original and Predicted waterlevel")
         plt.legend()
         plt.subplot(nCols, 3, 9)
-        scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel")
+        if returnMetrics:
+            mae["waterlevel"], bias["waterlevel"], skillIndex["waterlevel"], kolmogorovSmirnov["waterlevel"], pearson["waterlevel"] = scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel", returnMetrics=returnMetrics)
+        else:
+            scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel")
 
     if title:
         plt.suptitle(title)
     
     if savePath:
         plt.savefig(savePath)
+    
+    if returnMetrics:
+        return mae, bias, skillIndex, kolmogorovSmirnov, pearson
