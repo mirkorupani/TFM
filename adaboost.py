@@ -2,6 +2,7 @@ from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.tree import DecisionTreeRegressor
 import json
+import numpy as np
 
 class AdaBoost():
     """Class to train an AdaBoost model from the prediction matrix"""
@@ -13,6 +14,21 @@ class AdaBoost():
             self.config = json.load(f)
         self.predMatrix = predMatrix
         self.model = self.trainModel()
+    
+
+    def ksStatistic(self, data, dataRecon):
+        """Calculate the Kolmogorov-Smirnov (KS) statistic between two samples."""
+        xo = np.asarray(data).flatten()
+        xs = np.asarray(dataRecon).flatten()
+        xo_sorted = np.sort(xo)
+        xs_sorted = np.sort(xs)
+        return np.max(np.abs(xo_sorted - xs_sorted))
+
+
+    def ksScorer(self, estimator, X, y):
+        """Scorer function to calculate KS statistic during grid search."""
+        yPred = estimator.predict(X)
+        return -self.ksStatistic(y, yPred)
     
 
     def trainModel(self):
@@ -38,7 +54,8 @@ class AdaBoost():
         for var in self.predMatrix.y.columns:
             
             # Train the model
-            model[var] = GridSearchCV(AdaBoostRegressor(estimator=DecisionTreeRegressor(), random_state=self.config["randomState"]), paramGrid, cv=tscv, scoring=self.config["model"]["adaBoost"]["scoring"], n_jobs=self.config["model"]["adaBoost"]["nJobs"])
+            scoring = self.ksScorer if self.config["model"]["adaBoost"]["scoring"] == "ks" else self.config["model"]["adaBoost"]["scoring"]
+            model[var] = GridSearchCV(AdaBoostRegressor(estimator=DecisionTreeRegressor(), random_state=self.config["randomState"]), paramGrid, cv=tscv, scoring=scoring, n_jobs=self.config["model"]["adaBoost"]["nJobs"])
             model[var].fit(self.predMatrix.xTrain, self.predMatrix.yTrain[var])
 
             # Print the best parameters and best score
