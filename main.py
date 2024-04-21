@@ -5,6 +5,7 @@ from predictionMatrix import PredictionMatrix
 import pandas as pd
 from time import time
 
+
 class PredictSation():
     
     def __init__(self, configFilePath):
@@ -69,9 +70,18 @@ class PredictSation():
         return y, yPred
     
 
-    def plotResults(self, y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, show=True):
+    def plotResults(self, y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, show=True, saveMetrics=True, saveMetricsPath="metrics.json"):
         from plotFunct import combinedPlot
-        combinedPlot(y, yPred, startIdx=startIdx, title=title, savePath=savePath, waterlevel=waterlevel)
+        if saveMetrics:
+            mae, bias, skillIndex, kolmogorovSmirnov, pearson = combinedPlot(y, yPred, startIdx=startIdx, title=title, savePath=savePath, waterlevel=waterlevel, returnMetrics=True)
+            metrics = {"mae": mae, "bias": bias, "skillIndex": skillIndex, "kolmogorovSmirnov": kolmogorovSmirnov, "pearson": pearson}
+            # Convert float32 to serializable
+            for key in metrics.keys():
+                metrics[key] = {var: metrics[key][var].item() for var in metrics[key].keys()}
+            with open(saveMetricsPath, "w") as f:
+                json.dump(metrics, f, indent=4)
+        else:
+            combinedPlot(y, yPred, startIdx=startIdx, title=title, savePath=savePath, waterlevel=waterlevel)
         if show:
             import matplotlib.pyplot as plt
             plt.show()
@@ -98,21 +108,21 @@ if __name__ == "__main__":
     predictStation.train()
 
     # Predict new data
-    newHisFile = "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2012\\Santander_his.nc"
+    newHisFile = r"D:\F\recibido_JaviG\corrientes_bahia\validacion_2012\Santander_his.nc"
     y, yPred = predictStation.predict(newHisFile, removeTimesteps=24)
 
     # Plot results
-    predictStation.plotResults(y, yPred, savePath=f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Validation.png", waterlevel=True)
+    predictStation.plotResults(y, yPred, savePath=f"D:\\F\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Validation.png", waterlevel=True, saveMetricsPath=f"D:\\F\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}ValidationMetrics.json")
 
     # Save config
-    predictStation.saveConfig(f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Config.json")
+    predictStation.saveConfig(f"D:\\F\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}Config.json")
 
     # If adaBoost, export best parameters to csv
     if predictStation.config["model"]["method"] == "adaboost":
         bestParams = pd.DataFrame()
         for var in predictStation.model.model.keys():
             bestParams[var] = predictStation.model.model["u_x"].best_params_
-        bestParams.to_csv(f"F:\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}BestParams.csv")
+        bestParams.to_csv(f"D:\\F\\TFM_results\\{predictStation.config['model']['method']}\\sta{predictStation.config['predictands']['station']}BestParams.csv")
     
     # If lstm, export hyperparameters to csv
     if predictStation.config["model"]["method"] == "lstm":
