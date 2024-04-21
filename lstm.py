@@ -8,6 +8,8 @@ from keras.layers import LSTM, Dense, BatchNormalization, Dropout
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.callbacks import EarlyStopping
 import keras_tuner as kt
+from keras import backend as K
+from keras.metrics import Metric
 import pandas as pd
 import numpy as np
 import json
@@ -199,9 +201,14 @@ class HyperRegressor(kt.HyperModel):
             optimizer = SGD(hp.Choice('learningRate', configTrain["learningRates"]), momentum=0.9)
         elif configTrain["optimizer"] == "rmsprop":
             optimizer = RMSprop(hp.Choice('learningRate', configTrain["learningRates"]))
-        model.compile(optimizer=optimizer,
-                      loss=configTrain["loss"],
-                      metrics=configTrain["metrics"])
+        if self.config["model"]["lstm"]["hyperband"]["objective"] == "val_ks_statistic":
+            model.compile(optimizer=optimizer,
+                          loss=configTrain["loss"],
+                          metrics=[KSMetric()])
+        else:
+            model.compile(optimizer=optimizer,
+                        loss=configTrain["loss"],
+                        metrics=configTrain["metrics"])
         return model
 
     
@@ -223,6 +230,25 @@ class HyperRegressor(kt.HyperModel):
                                       config["batch"]["stepBatchSize"])
 
         return model.fit(x, y, **kwargs)
+
+
+class KSMetric(Metric):
+    def __init__(self, name='ks_statistic', **kwargs):
+        super(KSMetric, self).__init__(name=name, **kwargs)
+        self.ks_statistic = self.add_weight(name='ks_statistic', initializer='zeros')
+        self.samples = self.add_weight(name='samples', initializer='zeros')
+
+    def update_state(self, y_true, y_pred, sample_weight=None):
+        ks = K.max(K.abs(K.cumsum(y_true / K.sum(y_true)) - K.cumsum(y_pred / K.sum(y_pred))))
+        self.ks_statistic.assign_add(ks)
+        self.samples.assign_add(1)
+
+    def result(self):
+        return self.ks_statistic / self.samples
+
+    def reset_states(self):
+        self.ks_statistic.assign(0)
+        self.samples.assign(0)
             
 
 
