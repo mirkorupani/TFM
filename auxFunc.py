@@ -119,3 +119,24 @@ def ksStatistic(data, dataRecon):
     ksStat = np.max(np.abs(xoSorted - xsSorted))
 
     return ksStat
+
+
+def pearsonCorrCoeff(data, dataRecon):
+    """
+    Calculate the Pearson correlation coefficient between two samples.
+
+    Parameters:
+    data (array-like): The original sample data.
+    dataRecon (array-like): The reconstructed sample data.
+
+    Returns:
+    float: The Pearson correlation coefficient.
+    """
+    # Convert data to numpy arrays if they are not already
+    xo = np.asarray(data).flatten()
+    xs = np.asarray(dataRecon).flatten()
+
+    # Calculate the Pearson correlation coefficient
+    pearsonCoeff = np.corrcoef(xo, xs)[0, 1]
+
+    return pearsonCoeff
