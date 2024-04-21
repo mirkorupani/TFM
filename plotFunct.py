@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
-from auxFunc import willmottSkillIndex, ksStatistic
+from auxFunc import willmottSkillIndex, ksStatistic, pearsonCorrCoeff
 
 
 def scatter_recon(model, reconstruction, title=None):
@@ -25,7 +25,8 @@ def scatter_recon(model, reconstruction, title=None):
     bias = np.mean(model - reconstruction)
     skillIndex = willmottSkillIndex(model, reconstruction)
     kolmogorovSmirnov = ksStatistic(model, reconstruction)
-    plt.text(0.95, 0.15, f"MAE = {mae:.2g}\n bias = {bias:.2g}\n skill index = {skillIndex:.2g}\n KS = {kolmogorovSmirnov:.2g}", ha='right', va='center', transform=plt.gca().transAxes)
+    pearson = pearsonCorrCoeff(model, reconstruction)
+    plt.text(0.95, 0.15, f"MAE = {mae:.2g}\n bias = {bias:.2g}\n skill index = {skillIndex:.2g}\n KS = {kolmogorovSmirnov:.2g}\n Pearson = {pearson:.2g}", ha='right', va='center', transform=plt.gca().transAxes, fontsize=8)
 
     # Add title
     if title:
