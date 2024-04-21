@@ -94,3 +94,28 @@ def willmottSkillIndex(data, dataRecon, returnNumDen=False):
         return a, b
     else:
         return 1 - a / b
+
+
+def ksStatistic(data, dataRecon):
+    """
+    Calculate the Kolmogorov-Smirnov (KS) statistic between two samples.
+
+    Parameters:
+    data (array-like): The original sample data.
+    dataRecon (array-like): The reconstructed sample data.
+
+    Returns:
+    float: The KS statistic.
+    """
+    # Convert data to numpy arrays if they are not already
+    xo = np.asarray(data).flatten()
+    xs = np.asarray(dataRecon).flatten()
+
+    # Sort the data arrays
+    xoSorted = np.sort(xo)
+    xsSorted = np.sort(xs)
+
+    # Calculate the maximum absolute difference between the sorted arrays
+    ksStat = np.max(np.abs(xoSorted - xsSorted))
+
+    return ksStat
