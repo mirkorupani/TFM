@@ -1,11 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error
-from auxFunc import willmottSkillIndex, ksStatistic, pearsonCorrCoeff
+from auxFunc import willmottSkillIndex, ksStatistic, pearsonCorrCoeff, perkinsSkillScore
 
 
-def scatter_recon(model, reconstruction, title=None, returnMetrics=False):
+def scatter_recon(model, reconstruction, title=None, returnMetrics=False, metricsToPlot=["mae", "bias", "willmott", "pearson", "perkin"]):
     plt.scatter(model, reconstruction, alpha=0.5)
+
     plt.xlabel('Model')
     plt.ylabel('Reconstruction')
     plt.plot([min(model), max(model)], [min(model), max(model)], color='r', linestyle='--', label='Perfect reconstruction')
@@ -20,13 +21,20 @@ def scatter_recon(model, reconstruction, title=None, returnMetrics=False):
               np.max([np.percentile(model, 99), np.percentile(reconstruction, 99)])])
     plt.ylim(plt.gca().get_xlim())
 
-    # Add MAE and bias with white alpha background
-    mae = mean_absolute_error(model, reconstruction)
-    bias = np.mean(model - reconstruction)
-    skillIndex = willmottSkillIndex(model, reconstruction)
-    kolmogorovSmirnov = ksStatistic(model, reconstruction)
-    pearson = pearsonCorrCoeff(model, reconstruction)
-    plt.text(0.95, 0.15, f"MAE = {mae:.2g}\n bias = {bias:.2g}\n skill index = {skillIndex:.2g}\n KS = {kolmogorovSmirnov:.2g}\n Pearson = {pearson:.2g}", ha='right', va='center', transform=plt.gca().transAxes, fontsize=8)
+    metrics = {
+        "mae": mean_absolute_error(model, reconstruction),
+        "bias": np.mean(model - reconstruction),
+        "willmott": willmottSkillIndex(model, reconstruction),
+        "ks": ksStatistic(model, reconstruction),
+        "pearson": pearsonCorrCoeff(model, reconstruction),
+        "perkin": perkinsSkillScore(model, reconstruction)
+    }
+    text = ""
+    for metric, value in metrics.items():
+        if metric in metricsToPlot:
+            text += f"{metric}: {value:.2g}\n"
+
+    plt.text(0.95, 0.15, text, ha='right', va='center', transform=plt.gca().transAxes, fontsize=9)
 
     # Add title
     if title:
@@ -35,19 +43,29 @@ def scatter_recon(model, reconstruction, title=None, returnMetrics=False):
     plt.legend(loc='upper left')
 
     if returnMetrics:
-        return mae, bias, skillIndex, kolmogorovSmirnov, pearson
+        return metrics
 
 
-def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, returnMetrics=False):
+def combinedPlots(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, returnMetrics=False):
     """Plot original data and predicted data, removing the first startIdx hours"""
+    
+    # Plot currents (and waterlevel)
+    variables = ["u_x", "u_y"]
+    metricsCurrents = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+
+    # Plot temperature and salinity (and waterlevel)
+    variables = ["temperature", "salinity"]
+    metricsTempSal = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+    
+    if returnMetrics:
+        return metricsCurrents | metricsTempSal
+
+
+def individualCombinedPlot(y, yPred, variables, startIdx=0, savePath=None, returnMetrics=True, waterlevel=False, title=None):
 
     if returnMetrics:
-        mae = {}
-        bias = {}
-        skillIndex = {}
-        kolmogorovSmirnov = {}
-        pearson = {}
-    
+        metrics = {}
+
     plt.figure(figsize=(18, 15) if waterlevel else (15, 10))
     
     if startIdx > 0:
@@ -57,26 +75,26 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
     nCols = 3 if waterlevel else 2
 
     plt.subplot(nCols, 3, (1, 2))
-    plt.plot(y.index, y["u_x"], label="y")
-    plt.plot(y.index, yPred["u_x"], label="yPred")
-    plt.title("Original and Predicted u_x")
+    plt.plot(y.index, y[variables[0]], label="y")
+    plt.plot(y.index, yPred[variables[0]], label="yPred")
+    plt.title(f"Original and Predicted {variables[0]}")
     plt.legend()
     plt.subplot(nCols, 3, 3)
     if returnMetrics:
-        mae["u_x"], bias["u_x"], skillIndex["u_x"], kolmogorovSmirnov["u_x"], pearson["u_x"] = scatter_recon(y["u_x"], yPred["u_x"], title="u_x", returnMetrics=returnMetrics)
+        metrics[variables[0]] = scatter_recon(y[variables[0]], yPred[variables[0]], title=variables[0], returnMetrics=returnMetrics)
     else:
-        scatter_recon(y["u_x"], yPred["u_x"], title="u_x")
+        scatter_recon(y[variables[0]], yPred[variables[0]], title=variables[0])
 
     plt.subplot(nCols, 3, (4, 5))
-    plt.plot(y.index, y["u_y"], label="y")
-    plt.plot(y.index, yPred["u_y"], label="yPred")
-    plt.title("Original and Predicted u_y")
+    plt.plot(y.index, y[variables[1]], label="y")
+    plt.plot(y.index, yPred[variables[1]], label="yPred")
+    plt.title(f"Original and Predicted {variables[1]}")
     plt.legend()
     plt.subplot(nCols, 3, 6)
     if returnMetrics:
-        mae["u_y"], bias["u_y"], skillIndex["u_y"], kolmogorovSmirnov["u_y"], pearson["u_y"] = scatter_recon(y["u_y"], yPred["u_y"], title="u_y", returnMetrics=returnMetrics)
+        metrics[variables[1]] = scatter_recon(y[variables[1]], yPred[variables[1]], title=variables[1], returnMetrics=returnMetrics)
     else:
-        scatter_recon(y["u_y"], yPred["u_y"], title="u_y", returnMetrics=returnMetrics)
+        scatter_recon(y[variables[1]], yPred[variables[1]], title=variables[1], returnMetrics=returnMetrics)
 
     if waterlevel:
         plt.subplot(nCols, 3, (7, 8))
@@ -86,7 +104,7 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
         plt.legend()
         plt.subplot(nCols, 3, 9)
         if returnMetrics:
-            mae["waterlevel"], bias["waterlevel"], skillIndex["waterlevel"], kolmogorovSmirnov["waterlevel"], pearson["waterlevel"] = scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel", returnMetrics=returnMetrics)
+            metrics["waterlevel"] = scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel", returnMetrics=returnMetrics)
         else:
             scatter_recon(y["waterlevel"], yPred["waterlevel"], title="waterlevel")
 
@@ -94,7 +112,9 @@ def combinedPlot(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=Fal
         plt.suptitle(title)
     
     if savePath:
-        plt.savefig(savePath)
+        plt.savefig(f"{savePath}_{variables[0]}_{variables[1]}.png")
     
+    plt.close()
+
     if returnMetrics:
-        return mae, bias, skillIndex, kolmogorovSmirnov, pearson
+        return metrics
