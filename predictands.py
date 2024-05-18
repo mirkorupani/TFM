@@ -29,20 +29,41 @@ class Predictands():
             return xr.open_dataset(filePath)
         
         if isinstance(hisFile, list):
-            with xr.open_mfdataset(hisFile) as ds:
-                predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
+
+            # Load datasets and preprocess
+            datasets = [xr.open_dataset(file) for file in hisFile]
+
+            # Handle overlapping datasets
+            combined_ds = datasets[0]
+            for ds in datasets[1:]:
+                # Combine datasets, giving precedence to the first dataset
+                combined_ds = combined_ds.combine_first(ds)
+
+            # Chunk the combined dataset
+            combined_ds = combined_ds.chunk({'time': 5000, 'Station': 1, 'Layer': 1})
+
+            # Select the desired variables and coordinates
+            predictands = combined_ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
+
+
+            # with xr.open_mfdataset(hisFile, decode_times=True, chunks="auto", combine="nested", combine_attrs="override", compat="override") as ds:
+            #     predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
         else:
             with xr.open_dataset(hisFile) as ds:
                 predictands = ds[self.config["predictands"]["variables"]].isel(Station=self.config["predictands"]["station"]).sel(Layer=self.config["predictands"]["sigmaLayer"])
+        
+        # Round the time values to the nearest second
+        predictands["time"] = predictands["time"].dt.round("s")
 
         # Get hourly data
-        if self.config["predictands"]["resample"] == "mean":
-            predictands = predictands.resample(time="h").mean()
-        else:
-            raise ValueError("Resample method not recognized")
+        if predictands.time.to_index().inferred_freq != "h":
+            if self.config["predictands"]["resample"] == "mean":
+                predictands = predictands.resample(time="h").mean()
+            else:
+                raise ValueError("Resample method not recognized")
         
         # Remove NaNs
-        predictands = predictands.dropna("time")
+        # predictands = predictands.dropna("time")
         
         if writeNetCDF:
             predictands.to_netcdf(filePath)
