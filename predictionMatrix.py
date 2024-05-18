@@ -35,6 +35,9 @@ class PredictionMatrix():
             timeSeries = pd.date_range(predictors.tempExt[0][0], predictors.tempExt[0][1], freq="h")
             for i in range(1, len(predictors.tempExt)):
                 timeSeries = timeSeries.append(pd.date_range(predictors.tempExt[i][0], predictors.tempExt[i][1], freq="h"))
+            # Remove duplicates
+            timeSeries = timeSeries[~timeSeries.duplicated()]
+
         else:
             timeSeries = pd.date_range(predictors.tempExt[0], predictors.tempExt[1], freq="h")
 
@@ -43,6 +46,9 @@ class PredictionMatrix():
 
         # Add the wind data
         if self.config["predictors"]["wind"] == "meteogalicia":
+            # If wind data is shorter than x, trim wind data
+            if len(predictors.windData.time) != len(x):
+                predictors.windData = predictors.windData.isel(time=slice(0, len(x)))
             x["u10"] = predictors.windData.u
             x["v10"] = predictors.windData.v
             x["slp"] = predictors.windData.mslp
@@ -52,14 +58,28 @@ class PredictionMatrix():
             raise ValueError("Wind data source not recognized")
 
         # Add the current data
-        for var in self.config["predictors"]["hydro"]["variables"]:
-            x[var] = predictors.hydroData[var]
+        # If hydro data is longer than x, trim hydro data
+        if len(predictors.hydroData.time) != len(x):
+            predictors.hydroData = predictors.hydroData.isel(time=slice(0, len(x)))
+        for varList in self.config["predictors"]["hydro"]["variables"]:
+            for var in varList:
+                x[var] = predictors.hydroData[var].values
 
         # Add the discharge data
-        pass
+        if self.config["predictors"]["discharge"] is not None:
+            # If discharge data is longer than x, trim discharge data
+            if len(predictors.dischargeData.time) != len(x):
+                predictors.dischargeData = predictors.dischargeData.isel(time=slice(0, len(x)))
+            x["discharge"] = predictors.dischargeData.discharge
 
         # Add the tidal range data
         if self.config["predictors"]["tidalRange"] is not None:
+            # If tidal range data is shorter than x, trim x
+            if len(predictors.tidalRangeData.time) < len(x):
+                x = x.iloc[:len(predictors.tidalRangeData.tidalRange)]
+            # If tidal range data is longer than x, trim tidal range data
+            elif len(predictors.tidalRangeData.time) > len(x):
+                predictors.tidalRangeData = predictors.tidalRangeData.isel(time=slice(0, len(x)))
             x["tidalRange"] = predictors.tidalRangeData.tidalRange
 
         if newPredictors and not newPredictands:
@@ -71,8 +91,15 @@ class PredictionMatrix():
             predictands = self.predictands if not newPredictands else newPredictands
             # Predictands
             y = pd.DataFrame(index=timeSeries)
+            # If predictands are longer than y, trim predictands
+            if len(predictands.predictands.time) != len(y):
+                predictands.predictands = predictands.predictands.isel(time=slice(0, len(y)))
             for var in self.config["predictands"]["variables"]:
                 y[var] = predictands.predictands[var]
+            
+            # If predictors are shorter than predictands, trim predictands
+            if len(x) != len(y):
+                y = y.iloc[:len(x)]
 
             if removeTimesteps is not None:
                 return x.iloc[removeTimesteps-1:], y.iloc[removeTimesteps-1:]
@@ -92,10 +119,14 @@ class PredictionMatrix():
             self.scaler, self.xTrain, self.xTest = self.scaleData()
 
             # Dimensionality reduction
-            self.model, self.xTrain, self.xTest = self.dimReduction()
+            if self.config["preprocess"]["dimReduction"]["method"] is not None:
+                self.model, self.xTrain, self.xTest = self.dimReduction()
         
         else:
-            return self.model.transform(self.scaler.transform(newPredMatrix))
+            if self.config["preprocess"]["dimReduction"]["method"] is not None:
+                return self.model.transform(self.scaler.transform(newPredMatrix))
+            else:
+                return self.scaler.transform(newPredMatrix)
     
 
     def splitData(self):
