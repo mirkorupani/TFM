@@ -140,3 +140,29 @@ def pearsonCorrCoeff(data, dataRecon):
     pearsonCoeff = np.corrcoef(xo, xs)[0, 1]
 
     return pearsonCoeff
+
+
+def perkinsSkillScore(data, dataRecon, bins=50):
+    """
+    Calculate the Perkins skill score between two samples.
+
+    Parameters:
+    data (array-like): The original sample data (observed).
+    dataRecon (array-like): The reconstructed sample data (model).
+    bins (int): The number of bins to use for the histograms/PDFs.
+
+    Returns:
+    float: The Perkins skill score.
+    """
+    # Compute histograms for the observed and modeled data
+    zo, bin_edges = np.histogram(data, bins=bins, density=True)
+    zm, _ = np.histogram(dataRecon, bins=bin_edges, density=True)
+
+    # Normalize the histograms to form PDFs
+    zo = zo / np.sum(zo)
+    zm = zm / np.sum(zm)
+
+    # Compute the cumulative minimum value of the two distributions
+    sscore = np.sum(np.minimum(zo, zm))
+
+    return sscore
