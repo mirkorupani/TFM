@@ -3,7 +3,7 @@
 # from predictionMatrix import PredictionMatrix
 # import matplotlib.pyplot as plt
 # from plotFunct import combinedPlot
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense, BatchNormalization, Dropout
 from keras.optimizers import Adam, SGD, RMSprop
 from keras.callbacks import EarlyStopping
@@ -13,6 +13,7 @@ from keras.metrics import Metric
 import pandas as pd
 import numpy as np
 import json
+import os
 
 
 class RnnLstm():
@@ -38,9 +39,10 @@ class RnnLstm():
             xTrain = pd.DataFrame(self.predMatrix.xTrain, index=self.predMatrix.yTrain.index)
             xTest = pd.DataFrame(self.predMatrix.xTest, index=self.predMatrix.yTest.index)
         
-        # Create an empty array to store the input sequences
-        if isinstance(self.config["predictands"]["hisFile"], list) and newData is False:
-            xTrainSeq = np.empty((len(range(0, len(xTrain) + len(self.config["predictands"]["hisFile"]) * (-self.nTimesteps + 1), self.stepSize)), self.nTimesteps, xTrain.shape[1]))
+        # If the historical file is a list of files and the time steps are NOT consecutive
+        # NOTE: if some periods are consecutive and some are not, the code will not work
+        if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(xTrain.index))) != 1 and newData is False:
+            xTrainSeq = np.empty((len(range(0, len(xTrain) - self.nTimesteps + 1, self.stepSize)), self.nTimesteps, xTrain.shape[1]))
                                  
             # Create the input sequences
             minTimeDiff = np.min(np.unique(np.diff(xTrain.index)))
@@ -73,6 +75,12 @@ class RnnLstm():
     
 
     def trainModel(self):
+        modelPath = f"results\\lstm\\sta{self.config['predictands']['station']}Model.h5"
+
+        if os.path.exists(modelPath):
+            print("Model loaded from disk.")
+            return load_model(modelPath)
+
         configHyperband = self.config["model"]["lstm"]["hyperband"]
         inputShape = (self.nTimesteps, self.predMatrix.xTrain.shape[1])
         model = HyperRegressor(inputShape, self.nOutput, self.config)
@@ -88,12 +96,12 @@ class RnnLstm():
             factor=configHyperband["factor"],
             overwrite = configHyperband["overwrite"],
             directory=configHyperband["directory"],
-            project_name=configHyperband["projectName"],
+            project_name=configHyperband["projectName"] + str(self.config["predictands"]["station"]),
             seed=self.config["randomState"]
         )
 
         # Search for the best hyperparameters
-        if isinstance(self.config["predictands"]["hisFile"], list):
+        if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(self.predMatrix.yTrain.index))) != 1:
             # Get the labels (yTrain) considering multiple historical files
             timeDiff = np.diff(self.predMatrix.yTrain.index)
             idx = np.where(timeDiff != np.min(np.unique(timeDiff)))[0]
@@ -113,7 +121,7 @@ class RnnLstm():
         bestModel = model.build(bestHP)
         
         # Fit the best model
-        if isinstance(self.config["predictands"]["hisFile"], list):
+        if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(self.predMatrix.yTrain.index))) != 1:
             bestModel.fit(
                 self.xTrainSeq,
                 yTrain,
@@ -138,6 +146,10 @@ class RnnLstm():
                     restore_best_weights=True
                     )]
             )
+        
+        # Save the model
+        bestModel.save(modelPath)
+        print("Model saved to disk.")
 
         return bestModel
 
