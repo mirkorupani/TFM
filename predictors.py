@@ -12,7 +12,7 @@ from scipy.signal import find_peaks
 from datetime import timedelta
 import requests
 import xml.etree.ElementTree as ET
-
+from utide import solve, reconstruct
 class Predictors():
     """Class to get and load the predictors for the model"""
 
@@ -44,66 +44,6 @@ class Predictors():
         self.hydroData = self.getHydroData(folder=folder)
         self.dischargeData = self.getDischargeData(folder=folder)
         self.tidalRangeData = self.getTidalRangeData(folder=folder)
-    
-
-    def getWindURLs(self):
-        """Gets a list of URLs to download the wind data from MeteoGalicia
-        :return: list, URLs to download the wind data"""
-
-        # Expand the temporal extension one hour
-        if isinstance(self.tempExt, list):
-            iniDates = list()
-            endDates = list()
-            for i in range(len(self.tempExt)):
-                iniDates.append(self.tempExt[i][0] - pd.Timedelta(hours=1))
-                endDates.append(self.tempExt[i][1] + pd.Timedelta(hours=1))
-        else:
-            iniDates = self.tempExt[0] - pd.Timedelta(hours=1)
-            endDates = self.tempExt[1] + pd.Timedelta(hours=1)
-
-        # Get the files
-        base_catalog_url = "https://mandeo.meteogalicia.es/thredds/catalog/modelos/WRF_HIST/d02/"
-        urls = []
-        if isinstance(iniDates, list):
-            for iniDate, endDate in zip(iniDates, endDates):
-                currentDate = iniDate
-                while currentDate.year < endDate.year or (currentDate.year == endDate.year and currentDate.month <= endDate.month):
-                    yearMonthCatalogUrl = base_catalog_url + f"{currentDate.year}/{currentDate.month:02d}/catalog.xml"
-                    month_file_urls = self.getFileUrlsFromMonthCatalog(yearMonthCatalogUrl)
-                    urls.extend(month_file_urls)
-                    # Move to the next month
-                    _, days_in_month = calendar.monthrange(currentDate.year, currentDate.month)
-                    # Move to the first day of the next month
-                    currentDate = currentDate.replace(day=1) + timedelta(days=days_in_month)
-
-        else:
-            currentDate = iniDates
-            while currentDate.year < endDates.year or (currentDate.year == endDates.year and currentDate.month <= endDates.month):
-                yearMonthCatalogUrl = base_catalog_url + f"{currentDate.year}/{currentDate.month:02d}/catalog.xml"
-                month_file_urls = self.getFileUrlsFromMonthCatalog(yearMonthCatalogUrl)
-                urls.extend(month_file_urls)
-                # Move to the next month
-                _, days_in_month = calendar.monthrange(currentDate.year, currentDate.month)
-                # Move to the first day of the next month
-                currentDate = currentDate.replace(day=1) + timedelta(days=days_in_month)
-
-        return sorted(urls)
-    
-
-    def getFileUrlsFromMonthCatalog(self, catalogUrl):
-        fileUrls = []
-        namespace = {'ns': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0'}
-        baseUrl = "https://mandeo.meteogalicia.es/thredds/dodsC/"
-
-        response = requests.get(catalogUrl)
-        if response.status_code == 200:
-            tree = ET.fromstring(response.text)
-            for dataset in tree.findall('.//ns:dataset', namespace):
-                try:
-                    fileUrls.append(baseUrl + dataset.attrib.get('urlPath'))
-                except:
-                    continue
-        return fileUrls
 
 
     def processBatch(self, urls, x, y, batchNumber, write_netcdf=False, folder="predictors"):
@@ -151,8 +91,11 @@ class Predictors():
             return xr.open_dataset(os.path.join(folder, "windData.nc"))
         
         if provider == "meteogalicia":
+            
+            baseCatalogURL = "https://mandeo.meteogalicia.es/thredds/catalog/modelos/WRF_HIST/d02/"
+            baseURL = "https://mandeo.meteogalicia.es/thredds/dodsC/"
 
-            windUrls = self.getWindURLs()
+            windUrls = self.getThreddsURLs(baseCatalogURL, baseURL)
 
             # Define Lambert Conformal Conic projection
             lcc_proj = ccrs.LambertConformal(
@@ -347,14 +290,52 @@ class Predictors():
         # Import tide gauge mat file
         data = sio.loadmat(self.config["predictors"]["tidalRange"])
         time = np.array(datenumToDatetime(data["Date"]))
-        astronomicTide = data["Ma"]
-        # Trim time to the temporal extension
+
+        # If temporal extension is within time range, use the data
         if isinstance(self.tempExt, list):
-            idx = np.where((time >= self.tempExt[0][0].to_pydatetime()) & (time <= self.tempExt[-1][1].to_pydatetime()))[0]
+            maxTime = np.max([endExt for _, endExt in self.tempExt])
+            minTime = np.min([startExt for startExt, _ in self.tempExt])
         else:
-            idx = np.where((time >= self.tempExt[0].to_pydatetime()) & (time <= self.tempExt[1].to_pydatetime()))[0]
-        time = time[idx]
-        astronomicTide = astronomicTide[idx]
+            maxTime = self.tempExt[1]
+            minTime = self.tempExt[0]
+        if time[-1] >= maxTime and time[0] <= minTime:
+            astronomicTide = data["Ma"]
+            # Trim time to the temporal extension
+            if isinstance(self.tempExt, list):
+                idx = np.where((time >= self.tempExt[0][0].to_pydatetime()) & (time <= self.tempExt[-1][1].to_pydatetime()))[0]
+            else:
+                idx = np.where((time >= self.tempExt[0].to_pydatetime()) & (time <= self.tempExt[1].to_pydatetime()))[0]
+            
+            time = time[idx]
+            astronomicTide = astronomicTide[idx]
+        
+        else:
+            baseCatalogURL = "http://opendap.puertos.es/thredds/catalog/tidegauge_san2/"
+            baseURL = "http://opendap.puertos.es/thredds/dodsC/"
+            tideGaugeURLs = self.getThreddsURLs(baseCatalogURL, baseURL)
+            # Remove all the URLs that contain the word "analysis"
+            tideGaugeURLs = [url for url in tideGaugeURLs if "analysis" not in url]
+            with xr.open_mfdataset(tideGaugeURLs, decode_times=True) as ds:
+                # Select variables of interest
+                ds = ds[["SLEV", "SLEV_QC"]]
+                # Remove the data where SLEV_QC is not 1 or 2
+                ds = ds.where(ds.SLEV_QC.isin([1, 2]))
+                # Handle NaN values
+                ds = ds.chunk(dict(TIME=-1))
+                ds = ds.interpolate_na("TIME", method="linear")
+                # Get a moving mean of 5 minutes
+                ds = ds.rolling(TIME=600, center=True).mean()
+                # Resample to hourly frequency
+                ds = ds.resample(TIME="h").mean()
+
+                time = ds.TIME.values
+                tide = np.squeeze(ds.SLEV.values)
+
+                coef = solve(time, tide, lat=43.46, trend=False)
+
+                astronomicTide = reconstruct(time, coef).h
+
+        
         peaks, _ = find_peaks(astronomicTide.flatten())
         valleys, _ = find_peaks(-astronomicTide.flatten())
         # Concatenate peaks and valleys
@@ -393,4 +374,68 @@ class Predictors():
             ds.to_netcdf(os.path.join(folder, "tidalRangeData.nc"))
 
         return ds
+    
+
+    def getThreddsURLs(self, baseCatalogURL, baseURL):
+        """
+        Gets a list of URLs to download the tide gauge data from Meteogalicia or Puertos del Estado Thredds server.
+
+        :param baseCatalogURL: str, base URL of the catalog
+        :param baseURL: str, base URL of the data
+
+        :return: list, URLs to download the wind or tide gauge data
+        """
+
+        # Expand the temporal extension one hour
+        if isinstance(self.tempExt, list):
+            iniDates = list()
+            endDates = list()
+            for i in range(len(self.tempExt)):
+                iniDates.append(self.tempExt[i][0] - pd.Timedelta(hours=1))
+                endDates.append(self.tempExt[i][1] + pd.Timedelta(hours=1))
+        else:
+            iniDates = self.tempExt[0] - pd.Timedelta(hours=1)
+            endDates = self.tempExt[1] + pd.Timedelta(hours=1)
+
+        # Get the files
+        urls = []
+        if isinstance(iniDates, list):
+            for iniDate, endDate in zip(iniDates, endDates):
+                currentDate = iniDate
+                while currentDate.year < endDate.year or (currentDate.year == endDate.year and currentDate.month <= endDate.month):
+                    yearMonthCatalogUrl = baseCatalogURL + f"{currentDate.year}/{currentDate.month:02d}/catalog.xml"
+                    month_file_urls = self.getFileUrlsFromMonthCatalog(yearMonthCatalogUrl, baseURL)
+                    urls.extend(month_file_urls)
+                    # Move to the next month
+                    _, days_in_month = calendar.monthrange(currentDate.year, currentDate.month)
+                    # Move to the first day of the next month
+                    currentDate = currentDate.replace(day=1) + timedelta(days=days_in_month)
+
+        else:
+            currentDate = iniDates
+            while currentDate.year < endDates.year or (currentDate.year == endDates.year and currentDate.month <= endDates.month):
+                yearMonthCatalogUrl = baseCatalogURL + f"{currentDate.year}/{currentDate.month:02d}/catalog.xml"
+                month_file_urls = self.getFileUrlsFromMonthCatalog(yearMonthCatalogUrl, baseURL)
+                urls.extend(month_file_urls)
+                # Move to the next month
+                _, days_in_month = calendar.monthrange(currentDate.year, currentDate.month)
+                # Move to the first day of the next month
+                currentDate = currentDate.replace(day=1) + timedelta(days=days_in_month)
+
+        return sorted(urls)
+    
+
+    def getFileUrlsFromMonthCatalog(self, catalogUrl, baseURL):
+        fileUrls = []
+        namespace = {'ns': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0'}
+
+        response = requests.get(catalogUrl)
+        if response.status_code == 200:
+            tree = ET.fromstring(response.text)
+            for dataset in tree.findall('.//ns:dataset', namespace):
+                try:
+                    fileUrls.append(baseURL + dataset.attrib.get('urlPath'))
+                except:
+                    continue
+        return fileUrls
 
