@@ -10,8 +10,11 @@ class PredictionMatrix():
 
     def __init__(self, config, predictors, predictands):
         
-        with open(config) as f:
-            self.config = json.load(f)
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         self.predictors = predictors
         self.predictands = predictands
         self.x, self.y = self.getPredMatrix()
@@ -103,6 +106,9 @@ class PredictionMatrix():
 
             if removeTimesteps is not None:
                 return x.iloc[removeTimesteps-1:], y.iloc[removeTimesteps-1:]
+            
+
+            
             return x, y
     
 
@@ -189,3 +195,10 @@ class PredictionMatrix():
             return model, xTrain, xTest
         else:
             return model, xTrain, None
+    
+
+    def copy(self):
+        """Copies the object
+        :return: PredictionMatrix"""
+
+        return PredictionMatrix(self.config, self.predictors, self.predictands)
