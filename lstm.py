@@ -19,16 +19,16 @@ import os
 class RnnLstm():
     """Class to train an LSTM model from the prediction matrix"""
 
-    def __init__(self, config, predMatrix):
+    def __init__(self, config, predMatrix, modelName=None, overwrite=False, hyperparameters=None, nOutput=None):
         """Constructor of the class"""
         with open(config) as f:
             self.config = json.load(f)
         self.predMatrix = predMatrix
         self.nTimesteps = self.config["model"]["lstm"]["nTimesteps"]
         self.stepSize = self.config["model"]["lstm"]["stepSize"]
-        self.nOutput = len(self.config["predictands"]["variables"])
+        self.nOutput = len(self.config["predictands"]["variables"]) if nOutput is None else nOutput
         self.xTrainSeq, self.xTestSeq = self.preprocessData()
-        self.model = self.trainModel()
+        self.model, self.bestHP = self.trainModel(modelName=modelName, overwrite=overwrite, hyperparameters=hyperparameters)
     
 
     def preprocessData(self, newData=False):
@@ -74,51 +74,56 @@ class RnnLstm():
             return xTrainSeq, xTestSeq
     
 
-    def trainModel(self):
-        modelPath = f"results\\lstm\\sta{self.config['predictands']['station']}Model.h5"
+    def trainModel(self, overwrite=False, modelName=None, hyperparameters=None):
+        modelName = f"sta{self.config['predictands']['station']}Model" if modelName is None else modelName
+        modelPath = "results\\lstm\\" + modelName + ".h5"
 
-        if os.path.exists(modelPath):
+        if not overwrite and os.path.exists(modelPath):
             print("Model loaded from disk.")
-            return load_model(modelPath)
+            return load_model(modelPath), None
 
-        configHyperband = self.config["model"]["lstm"]["hyperband"]
-        inputShape = (self.nTimesteps, self.predMatrix.xTrain.shape[1])
-        model = HyperRegressor(inputShape, self.nOutput, self.config)
-
-        # Define objective
-        objective = kt.Objective(configHyperband["objective"], direction=configHyperband["direction"])
-
-        # Define tuner
-        tuner = kt.tuners.Hyperband(
-            hypermodel=model,
-            objective=objective,
-            max_epochs=configHyperband["maxEpochs"],
-            factor=configHyperband["factor"],
-            overwrite = configHyperband["overwrite"],
-            directory=configHyperband["directory"],
-            project_name=configHyperband["projectName"] + str(self.config["predictands"]["station"]),
-            seed=self.config["randomState"]
-        )
-
-        # Search for the best hyperparameters
-        if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(self.predMatrix.yTrain.index))) != 1:
-            # Get the labels (yTrain) considering multiple historical files
-            timeDiff = np.diff(self.predMatrix.yTrain.index)
-            idx = np.where(timeDiff != np.min(np.unique(timeDiff)))[0]
-            yTrain = np.empty((len(self.xTrainSeq), self.nOutput))
-            for i in range(len(idx)):
-                if i == 0:
-                    yTrain[:idx[i]-self.nTimesteps+1] = self.predMatrix.yTrain[self.nTimesteps-1:idx[i]]
-                else:
-                    yTrain[idx[i-1]-i*(self.nTimesteps-1):idx[i]-i*(self.nTimesteps-1)] = self.predMatrix.yTrain[idx[i-1]+i*(self.nTimesteps-1):idx[i]+i*(self.nTimesteps-1)]
-            yTrain[idx[-1]-len(idx)*(self.nTimesteps-1):] = self.predMatrix.yTrain[idx[-1]+len(idx)*(self.nTimesteps-1):]
-            tuner.search(self.xTrainSeq, yTrain, validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+        if hyperparameters:
+            bestModel = self.buildModelWithHyperparameters(hyperparameters)
+            bestHP = hyperparameters  # Store the provided hyperparameters for reference
         else:
-            tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+            configHyperband = self.config["model"]["lstm"]["hyperband"]
+            inputShape = (self.nTimesteps, self.predMatrix.xTrain.shape[1])
+            model = HyperRegressor(inputShape, self.nOutput, self.config)
 
-        # Get the best model
-        bestHP = tuner.get_best_hyperparameters()[0]
-        bestModel = model.build(bestHP)
+            # Define objective
+            objective = kt.Objective(configHyperband["objective"], direction=configHyperband["direction"])
+
+            # Define tuner
+            tuner = kt.tuners.Hyperband(
+                hypermodel=model,
+                objective=objective,
+                max_epochs=configHyperband["maxEpochs"],
+                factor=configHyperband["factor"],
+                overwrite = configHyperband["overwrite"],
+                directory=configHyperband["directory"],
+                project_name=configHyperband["projectName"] + modelName,
+                seed=self.config["randomState"]
+            )
+
+            # Search for the best hyperparameters
+            if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(self.predMatrix.yTrain.index))) != 1:
+                # Get the labels (yTrain) considering multiple historical files
+                timeDiff = np.diff(self.predMatrix.yTrain.index)
+                idx = np.where(timeDiff != np.min(np.unique(timeDiff)))[0]
+                yTrain = np.empty((len(self.xTrainSeq), self.nOutput))
+                for i in range(len(idx)):
+                    if i == 0:
+                        yTrain[:idx[i]-self.nTimesteps+1] = self.predMatrix.yTrain[self.nTimesteps-1:idx[i]]
+                    else:
+                        yTrain[idx[i-1]-i*(self.nTimesteps-1):idx[i]-i*(self.nTimesteps-1)] = self.predMatrix.yTrain[idx[i-1]+i*(self.nTimesteps-1):idx[i]+i*(self.nTimesteps-1)]
+                yTrain[idx[-1]-len(idx)*(self.nTimesteps-1):] = self.predMatrix.yTrain[idx[-1]+len(idx)*(self.nTimesteps-1):]
+                tuner.search(self.xTrainSeq, yTrain, validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+            else:
+                tuner.search(self.xTrainSeq, self.predMatrix.yTrain[self.nTimesteps-1::self.stepSize], validation_data=(self.xTestSeq, self.predMatrix.yTest[self.nTimesteps-1::self.stepSize]))
+
+            # Get the best model
+            bestHP = tuner.get_best_hyperparameters()[0]
+            bestModel = model.build(bestHP)
         
         # Fit the best model
         if isinstance(self.config["predictands"]["hisFile"], list) and len(np.unique(np.diff(self.predMatrix.yTrain.index))) != 1:
@@ -151,7 +156,7 @@ class RnnLstm():
         bestModel.save(modelPath)
         print("Model saved to disk.")
 
-        return bestModel
+        return bestModel, bestHP
 
 
 # Create hyperregressor class
