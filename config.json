@@ -2,25 +2,29 @@
     "randomState": 42,
 
     "predictands": {
-        "predictandsFolder": "F:\\TFM\\predictands",
+        "predictandsFolder": "C:\\TFM\\predictands",
         "station": 1,
-        "hisFile": "F:\\recibido_JaviG\\corrientes_bahia\\validacion_2011\\Santander_his.nc",
-        "removeTimesteps": 24,
-        "variables": ["u_x", "u_y", "waterlevel"],
+        "hisFile":[
+            "C:\\TFM\\input\\recibido_JaviG\\corrientes_bahia\\0_hidros_Mirko\\01_2021\\Santander_his.nc",
+            "C:\\TFM\\input\\recibido_JaviG\\corrientes_bahia\\0_hidros_Mirko\\02_2021\\Santander_his.nc"
+        ],
+        "removeTimesteps": 168,
+        "variables": ["u_x", "u_y", "waterlevel", "temperature", "salinity"],
         "sigmaLayer": -0.1,
         "resample": "mean"
     },
 
     "predictors": {
-        "predictorsFolder": "F:\\TFM\\predictors",
+        "predictorsFolder": "C:\\TFM\\predictors",
         "wind": "meteogalicia",
         "hydro": {
-            "dataset_id": "cmems_mod_ibi_phy_my_0.083deg-2D_PT1H-m",
+            "dataset_id": ["cmems_mod_ibi_phy_anfc_0.027deg-2D_PT1H-m", "cmems_mod_ibi_phy_anfc_0.027deg-3D_P1D-m"],
             "point": [43.6, -3.742],
-            "variables": ["ubar", "vbar", "zos"]
+            "variables": [["ubar", "vbar", "zos"], ["thetao", "so"]]
 
         },
-        "tidalRange": "F:\\TFM_input\\REDMAR_Santander_PdE.mat"
+        "discharge": "C:\\TFM\\input\\qsim_Puntal_drag.mat",
+        "tidalRange": "C:\\TFM\\input\\REDMAR_Santander_PdE.mat"
     },
 
     "preprocess": {
@@ -32,13 +36,13 @@
             "method": "standard"
         },
         "dimReduction": {
-            "method": "isomap",
-            "nComponents": 5
+            "method": null,
+            "nComponents": 3
         }
     },
 
     "model": {
-        "method": "analogues",
+        "method": "lstm",
 
         "analogues": {
             "clustering": "spectral",
@@ -73,6 +77,7 @@
         },
 
         "lstm": {
+            "differentNetworks": [["u_x", "u_y", "waterlevel"], ["temperature", "salinity"]],
             "nTimesteps": 10,
             "stepSize": 1,
             "lstmLayers": {
@@ -97,24 +102,27 @@
             "train": {
                 "optimizer": "adam",
                 "loss": "mean_squared_error",
-                "metrics": ["mean_squared_error", "mean_absolute_error"],
+                "metrics": [
+                    "mean_squared_error",
+                    "mean_absolute_error"
+                ],
                 "learningRates": [0.00001, 0.0001, 0.001, 0.01],
                 "earlyStopping": {
                     "monitor": "val_loss",
                     "patience": 15
                 },
                 "batch": {
-                    "minBatchSize": 32,
-                    "maxBatchSize": 128,
-                    "stepBatchSize": 32
+                    "minBatchSize": 256,
+                    "maxBatchSize": 1024,
+                    "stepBatchSize": 256
                 }
             },
             "hyperband": {
                 "objective": "val_loss",
                 "direction": "min",
-                "maxEpochs": 200,
+                "maxEpochs": 500,
                 "factor": 3,
-                "overwrite": true,
+                "overwrite": false,
                 "directory": "ktuner",
                 "projectName": "lstm"
             }
