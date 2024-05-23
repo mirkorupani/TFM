@@ -166,3 +166,17 @@ def perkinsSkillScore(data, dataRecon, bins=50):
     sscore = np.sum(np.minimum(zo, zm))
 
     return sscore
+
+
+def concatCamel(strings):
+    if not strings:
+        return ''
+    
+    # Convert the first string to lowercase
+    result = strings[0].lower()
+    
+    # Capitalize the first letter of each subsequent string
+    for string in strings[1:]:
+        result += string.capitalize()
+    
+    return result
