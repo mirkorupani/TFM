@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Desarrollo de metodologías basadas en aprendizaje automático para el 
+modelado hidrodinámico"
+version: 1.0.0
+authors:
+  - family-names: "Rupani"
+    given-names: "Mirko"
+    orcid: "https://orcid.org/0009-0009-0301-0064"
+    affiliation: "IHCantabria - Instituto de Hidráulica Ambiental de la Universidad de Cantabria; Tecnalia Research and Innovation"  # optional
+date-released: 2024-06-10
+url: "https://github.com/mirkorupani/TFM"
+doi: "10.5281/zenodo.1234567"  # optional, if you have a DOI
+keywords:
+  - hydrodynamics
+  - hybrid downscaling
+  - statistical downscaling
+  - machine learning
