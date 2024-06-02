@@ -89,11 +89,13 @@ class PredictSation():
                 yPred = self.model.model.predict(xSeq)
             else:
                 yPred = pd.DataFrame(index=y.index)
+                # Remove the first nInput-1 hours
+                yPred = yPred.iloc[self.model[0].nTimesteps-1:]
                 for i, var in enumerate(self.config["model"]["lstm"]["differentNetworks"]):
                     yPred[var] = self.model[i].model.predict(xSeq)
             
             # Drop the first nInput-1 hours
-            y = y.iloc[self.model.nTimesteps-1:]
+            y = y.iloc[self.model.nTimesteps-1:] if self.config["model"]["lstm"]["differentNetworks"] is None else y.iloc[self.model[0].nTimesteps-1:]
             
             # Convert yPred to a DataFrame
             if self.config["model"]["lstm"]["differentNetworks"] is None:
@@ -120,7 +122,7 @@ class PredictSation():
 
     def saveConfig(self, savePath="config.json"):
         with open(savePath, "w") as f:
-            json.dump(self.model.config, f, indent=4)
+            json.dump(self.config, f, indent=4)
         
         if self.config["model"]["method"] == "adaboost":
             bestParams = pd.DataFrame()
