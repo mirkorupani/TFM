@@ -7,9 +7,19 @@ class Predictands():
 
 
     def __init__(self, config, hisFile=None, folder="predictands"):
+        """
+        :param config: str, path to the configuration file or dictionary with the configuration
+        :param hisFile: str, path to the history file
+        :param folder: str, folder where the predictands are stored
         
-        with open(config) as f:
-            self.config = json.load(f)
+        :return: None
+        """
+        
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         
         if hisFile is None:
             folder = self.config["predictands"]["predictandsFolder"]
@@ -18,8 +28,16 @@ class Predictands():
         self.predictands = self.getPredictands(hisFile, folder=folder)
     
     def getPredictands(self, hisFile, writeNetCDF=True, overwrite=False, folder="predictands"):
-        """Gets the predictands
-        :return: pandas.DataFrame, predictands"""
+        """
+        Loads the predictands from the history file
+        
+        :param hisFile: str, path to the history file
+        :param writeNetCDF: bool, whether to write the predictands to a NetCDF file
+        :param overwrite: bool, whether to overwrite the NetCDF file if it already exists
+        :param folder: str, folder where to store the predictands
+        
+        :return: xarray.Dataset, predictands dataset
+        """
 
         station = self.config["predictands"]["station"]
         filePath = os.path.join(folder,f"Sta{station}predictands.nc")

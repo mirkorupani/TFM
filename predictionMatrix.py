@@ -9,6 +9,13 @@ class PredictionMatrix():
 
 
     def __init__(self, config, predictors, predictands):
+        """
+        :param config: str, path to the configuration file or dictionary with the configuration
+        :param predictors: Predictors, predictors object
+        :param predictands: Predictands, predictands object
+        
+        :return: None
+        """
         
         if isinstance(config, dict):
             self.config = config
@@ -22,8 +29,16 @@ class PredictionMatrix():
 
 
     def getPredMatrix(self, newPredictors=False, newPredictands=False, removeTimesteps=None):
-        """Gets the prediction matrix
-        :return: pandas.DataFrame, prediction matrix"""
+        """
+        Gets the prediction matrix to be used in the model
+        
+        :param newPredictors: Predictors, new predictors object
+        :param newPredictands: Predictands, new predictands object
+        :param removeTimesteps: int, number of time steps to remove
+        
+        :return: x (pd.DataFrame) prediction matrix if newPredictors and newPredictands are False
+        :return: x, y (pd.DataFrame, pd.DataFrame) prediction matrix and predictands in any other case
+        """
 
         # Time steps to remove
         if removeTimesteps is None:
@@ -107,14 +122,17 @@ class PredictionMatrix():
             if removeTimesteps is not None:
                 return x.iloc[removeTimesteps-1:], y.iloc[removeTimesteps-1:]
             
-
-            
             return x, y
     
 
     def preprocessData(self, newPredMatrix=False):
-        """Preprocesses the data
-        :return: tuple, (xTrain, xTest, yTrain, yTest)"""
+        """
+        Preprocesses the data
+        
+        :param newPredMatrix: bool, whether to preprocess a new prediction matrix
+        
+        :return: None
+        """
 
         if newPredMatrix is False:
 
@@ -136,8 +154,11 @@ class PredictionMatrix():
     
 
     def splitData(self):
-        """Splits the data into training and testing sets
-        :return: tuple, (xTrain, xTest, yTrain, yTest)"""
+        """
+        Splits the data into training and testing sets
+        
+        :return: tuple, (xTrain, xTest, yTrain, yTest)
+        """
 
         # Split the data
         if self.config["preprocess"]["trainTestSplit"]["method"] == "temporal":
@@ -152,8 +173,11 @@ class PredictionMatrix():
     
 
     def scaleData(self):
-        """Scales the data
-        :return: tuple, (xTrain, xTest)"""
+        """
+        Scales the data
+        
+        :return: tuple, (scaler, xTrain, xTest)
+        """
 
         # Scale the data
         if self.config["preprocess"]["scale"]["method"] == "standard":
@@ -172,8 +196,11 @@ class PredictionMatrix():
     
 
     def dimReduction(self):
-        """Applies dimensionality reduction to the data
-        :return: tuple, (xTrain, xTest)"""
+        """
+        Performs dimensionality reduction on the data
+        
+        :return: tuple, (model, xTrain, xTest)
+        """
 
         # Dimensionality reduction
         if self.config["preprocess"]["dimReduction"]["method"] == "pca":
@@ -198,7 +225,10 @@ class PredictionMatrix():
     
 
     def copy(self):
-        """Copies the object
-        :return: PredictionMatrix"""
+        """
+        Copies the prediction matrix
+        
+        :return: PredictionMatrix, copy of the prediction matrix
+        """
 
         return PredictionMatrix(self.config, self.predictors, self.predictands)
