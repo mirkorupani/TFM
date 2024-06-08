@@ -21,8 +21,11 @@ class Analogues():
 
 
     def getClustering(self):
-        """Gets a clustering model
-        :return: sklearn.neighbors.NearestNeighbors, clustering"""
+        """
+        Gets the clustering algorithm
+        
+        :return: fitted clustering algorithm (KMeans, max_diss_alg, SpectralClustering)
+        """
 
         randomState = self.config["randomState"]
 
@@ -44,7 +47,15 @@ class Analogues():
     
 
     def getAnalogues(self):
-        """Gets the analogues"""
+        """
+        Gets the analogues
+        
+        :return: tuple, (centroids, xAnalogues, yAnalogues)
+        
+        centroids: np.array, indices of the analogues
+        xAnalogues: np.array, features of the analogues
+        yAnalogues: np.array, target values of the analogues
+        """
 
         # Get the analogues
         if self.config["model"]["analogues"]["clustering"] == "kMeans":
@@ -64,8 +75,11 @@ class Analogues():
     
 
     def getRegressor(self):
-        """Gets the regressor
-        :return: sklearn.neighbors.KNeighborsRegressor, regressor"""
+        """
+        Gets the regressor
+        
+        :return: fitted regressor (KNeighborsRegressor, KernelRidge)
+        """
 
         regressorType = self.config["model"]["analogues"]["regressor"]
         regressorConfig = self.config["model"]["analogues"][regressorType]
