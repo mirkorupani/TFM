@@ -20,9 +20,21 @@ class RnnLstm():
     """Class to train an LSTM model from the prediction matrix"""
 
     def __init__(self, config, predMatrix, modelName=None, overwrite=False, hyperparameters=None, nOutput=None):
-        """Constructor of the class"""
-        with open(config) as f:
-            self.config = json.load(f)
+        """
+        :param config: str, path to the configuration file or dictionary with the configuration
+        :param predMatrix: PredictionMatrix, prediction matrix
+        :param modelName: str, name of the model
+        :param overwrite: bool, whether to overwrite the model
+        :param hyperparameters: dict, hyperparameters for the model
+        :param nOutput: int, number of output variables
+        
+        :return: None
+        """
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         self.predMatrix = predMatrix
         self.nTimesteps = self.config["model"]["lstm"]["nTimesteps"]
         self.stepSize = self.config["model"]["lstm"]["stepSize"]
@@ -32,6 +44,13 @@ class RnnLstm():
     
 
     def preprocessData(self, newData=False):
+        """
+        Preprocesses the data to be fed into the LSTM model
+        
+        :param newData: pd.DataFrame, new data to preprocess
+        
+        :return: np.array, input sequences
+        """
         if newData is not False:
             xTrain = pd.DataFrame(newData, index=newData.index)
         else:
@@ -75,18 +94,28 @@ class RnnLstm():
     
 
     def trainModel(self, overwrite=False, modelName=None, hyperparameters=None):
+        """
+        Trains the LSTM model
+        
+        :param overwrite: bool, whether to overwrite the model
+        :param modelName: str, name of the model
+        :param hyperparameters: dict, hyperparameters for the model
+        
+        :return: keras model, trained LSTM model
+        """
         modelName = f"sta{self.config['predictands']['station']}Model" if modelName is None else modelName
         modelPath = "results\\lstm\\" + modelName + ".h5"
 
         if not overwrite and os.path.exists(modelPath):
             print("Model loaded from disk.")
             return load_model(modelPath), None
-
+        
+        configHyperband = self.config["model"]["lstm"]["hyperband"]
+        
         if hyperparameters:
             bestModel = self.buildModelWithHyperparameters(hyperparameters)
             bestHP = hyperparameters  # Store the provided hyperparameters for reference
         else:
-            configHyperband = self.config["model"]["lstm"]["hyperband"]
             inputShape = (self.nTimesteps, self.predMatrix.xTrain.shape[1])
             model = HyperRegressor(inputShape, self.nOutput, self.config)
 
@@ -136,7 +165,8 @@ class RnnLstm():
                     monitor=self.config["model"]["lstm"]["train"]["earlyStopping"]["monitor"],
                     patience=self.config["model"]["lstm"]["train"]["earlyStopping"]["patience"],
                     restore_best_weights=True
-                    )]
+                    )],
+                batch_size=bestHP["values"]["batch_size"]
             )
         else:
             configEarlyStopping = self.config["model"]["lstm"]["train"]["earlyStopping"]
@@ -149,7 +179,8 @@ class RnnLstm():
                     monitor=configEarlyStopping["monitor"],
                     patience=configEarlyStopping["patience"],
                     restore_best_weights=True
-                    )]
+                    )],
+                batch_size=bestHP["values"]["batch_size"]
             )
         
         # Save the model
@@ -157,18 +188,99 @@ class RnnLstm():
         print("Model saved to disk.")
 
         return bestModel, bestHP
+    
+
+    def buildModelWithHyperparameters(self, hyperparameters):
+        """
+        Builds the LSTM model using the provided hyperparameters
+
+        :param hyperparameters: dict, hyperparameters for the model
+
+        :return: keras model, LSTM model
+        """
+        model = Sequential()
+
+        # Get LSTM layer configurations from hyperparameters
+        num_lstm_layers = hyperparameters['values']['numLstmLayers']
+        for i in range(num_lstm_layers):
+            return_sequences = i < num_lstm_layers - 1  # Set return_sequences to True for all except last LSTM layer
+            lstm_units = hyperparameters['values'][f'lstmUnits_{i}']
+            dropout_lstm = hyperparameters['values'][f'dropoutLstm_{i}']
+            dropout_rate_lstm = hyperparameters['values'][f'dropoutRateLstm_{i}']
+            
+            if i == 0:
+                model.add(LSTM(units=lstm_units,
+                            activation='relu',
+                            input_shape=(self.nTimesteps, self.predMatrix.xTrain.shape[1]),
+                            return_sequences=return_sequences))
+            else:
+                model.add(LSTM(units=lstm_units,
+                            activation='relu',
+                            return_sequences=return_sequences))
+            
+            model.add(BatchNormalization())
+            
+            if dropout_lstm:
+                model.add(Dropout(rate=dropout_rate_lstm))
+
+        # Get Dense layer configurations from hyperparameters
+        num_dense_layers = hyperparameters['values']['numDenseLayers']
+        for i in range(num_dense_layers):
+            dense_units = hyperparameters['values'][f'denseUnits_{i}']
+            model.add(Dense(units=dense_units, activation='relu'))
+        
+        model.add(Dense(self.nOutput))
+
+        # Get training configurations from hyperparameters
+        optimizer_name = self.config["model"]["lstm"]["train"]["optimizer"]
+        learning_rate = hyperparameters['values']['learningRate']
+        
+        if optimizer_name == "adam":
+            optimizer = Adam(learning_rate)
+        elif optimizer_name == "sgd":
+            optimizer = SGD(learning_rate, momentum=0.9)
+        elif optimizer_name == "rmsprop":
+            optimizer = RMSprop(learning_rate)
+
+        # Compile the model
+        if self.config["model"]["lstm"]["hyperband"]["objective"] == "val_ks_statistic":
+            model.compile(optimizer=optimizer,
+                        loss=self.config["model"]["lstm"]["train"]["loss"],
+                        metrics=[KSMetric()])
+        else:
+            model.compile(optimizer=optimizer,
+                        loss=self.config["model"]["lstm"]["train"]["loss"],
+                        metrics=self.config["model"]["lstm"]["train"]["metrics"])
+        
+        return model
+
 
 
 # Create hyperregressor class
 class HyperRegressor(kt.HyperModel):
+    """HyperModel class for LSTM model"""
         
     def __init__(self, inputShape, nOutput, config):
+        """
+        :param inputShape: tuple, input shape of the model
+        :param nOutput: int, number of output variables
+        :param config: dict, configuration file
+        
+        :return: None
+        """
         self.inputShape = inputShape
         self.nOutput = nOutput
         self.config = config
     
 
     def build(self, hp):
+        """
+        Builds the LSTM model
+        
+        :param hp: HyperParameters, hyperparameters for the model
+        
+        :return: keras model, LSTM model
+        """
         model = Sequential()
 
         configLstm = self.config["model"]["lstm"]["lstmLayers"]
@@ -230,6 +342,17 @@ class HyperRegressor(kt.HyperModel):
 
     
     def fit(self, hp, model, x, y, **kwargs):
+        """
+        Fits the LSTM model
+        
+        :param hp: HyperParameters, hyperparameters for the model
+        :param model: keras model, LSTM model
+        :param x: np.array, input sequences
+        :param y: np.array, target values
+        :param kwargs: dict, additional arguments
+        
+        :return: keras history, training history
+        """
 
         config = self.config["model"]["lstm"]["train"]
         
@@ -250,7 +373,14 @@ class HyperRegressor(kt.HyperModel):
 
 
 class KSMetric(Metric):
+    """Custom metric to calculate the KS statistic"""
+
     def __init__(self, name='ks_statistic', **kwargs):
+        """
+        :param name: str, name of the metric
+        
+        :return: None
+        """
         super(KSMetric, self).__init__(name=name, **kwargs)
         self.ks_statistic = self.add_weight(name='ks_statistic', initializer='zeros')
         self.samples = self.add_weight(name='samples', initializer='zeros')
@@ -266,20 +396,3 @@ class KSMetric(Metric):
     def reset_states(self):
         self.ks_statistic.assign(0)
         self.samples.assign(0)
-            
-
-
-# # Define LSTM model
-# model = Sequential()
-# model.add(LSTM(200, activation='relu', input_shape=(nInput, xTrain.shape[1])))
-# model.add(BatchNormalization())
-# model.add(Dropout(0.2))
-# model.add(Dense(100, activation='relu'))
-# model.add(Dense(3))
-
-
-# # Compile the model
-# model.compile(optimizer='adam', loss='mse')
-
-# # Fit the model
-# history = model.fit(xTrainSeq, predMatrix.yTrain[nInput-1::stepSize], epochs=100, batch_size=32, validation_data=(xTestSeq, predMatrix.yTest[nInput-1::stepSize]))
