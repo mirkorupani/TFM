@@ -5,6 +5,17 @@ from auxFunc import willmottSkillIndex, ksStatistic, pearsonCorrCoeff, perkinsSk
 
 
 def scatter_recon(model, reconstruction, title=None, returnMetrics=False, metricsToPlot=["mae", "bias", "willmott", "pearson", "perkin"]):
+    """
+    Scatter plot of the model and the reconstruction, with some metrics
+    
+    :param model: np.array, original data
+    :param reconstruction: np.array, reconstructed data
+    :param title: str, title of the plot
+    :param returnMetrics: bool, if True, return the metrics
+    :param metricsToPlot: list, metrics to plot
+    
+    :return: dict, metrics
+    """
     plt.scatter(model, reconstruction, alpha=0.5)
 
     plt.xlabel('Model')
@@ -47,22 +58,52 @@ def scatter_recon(model, reconstruction, title=None, returnMetrics=False, metric
 
 
 def combinedPlots(y, yPred, startIdx=0, title=None, savePath=None, waterlevel=False, returnMetrics=False):
-    """Plot original data and predicted data, removing the first startIdx hours"""
+    """
+    Plot the original and predicted data
     
+    :param y: pd.DataFrame, original data
+    :param yPred: pd.DataFrame, predicted data
+    :param startIdx: int, index to start the plot and metrics
+    :param title: str, title of the plot
+    :param savePath: str, path to save the plot
+    :param waterlevel: bool, if True, plot the waterlevel
+    :param returnMetrics: bool, if True, return the metrics
+    
+    :return: dict, metrics
+    """
+    metrics = {}
+
     # Plot currents (and waterlevel)
     variables = ["u_x", "u_y"]
-    metricsCurrents = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+    if np.all([var in y.columns for var in variables]):
+        metricsCurrents = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+        metrics.update(metricsCurrents)
 
     # Plot temperature and salinity (and waterlevel)
     variables = ["temperature", "salinity"]
-    metricsTempSal = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+    if np.all([var in y.columns for var in variables]):
+        metricsTempSal = individualCombinedPlot(y, yPred, variables, startIdx=startIdx, savePath=savePath, returnMetrics=returnMetrics, waterlevel=waterlevel, title=title)
+        metrics.update(metricsTempSal)
     
     if returnMetrics:
-        return metricsCurrents | metricsTempSal
+        return metrics
 
 
 def individualCombinedPlot(y, yPred, variables, startIdx=0, savePath=None, returnMetrics=True, waterlevel=False, title=None):
-
+    """
+    Plot the original and predicted data for a specific variable
+    
+    :param y: pd.DataFrame, original data
+    :param yPred: pd.DataFrame, predicted data
+    :param variables: list, variables to plot
+    :param startIdx: int, index to start the plot and metrics
+    :param savePath: str, path to save the plot
+    :param returnMetrics: bool, if True, return the metrics
+    :param waterlevel: bool, if True, plot the waterlevel
+    :param title: str, title of the plot
+    
+    :return: dict, metrics
+    """
     if returnMetrics:
         metrics = {}
 
@@ -113,6 +154,7 @@ def individualCombinedPlot(y, yPred, variables, startIdx=0, savePath=None, retur
     
     if savePath:
         plt.savefig(f"{savePath}_{variables[0]}_{variables[1]}.png")
+    
     
     plt.close()
 
