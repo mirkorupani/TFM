@@ -6,8 +6,10 @@ import datetime
 
 def getTempExt(netcdf_file):
     """
-    Get the temporal extension of a Delft3D netcdf output file
+    Gets the temporal extension of a Delft3D netcdf output file
+
     :param netcdf_file: str, path to the netcdf file
+
     :return: pd.Timestamp tuple, (start, end)
     """
     with xr.open_dataset(netcdf_file) as ds:
@@ -18,10 +20,12 @@ def getTempExt(netcdf_file):
 
 def getCoord(netcdf_file, point, srcProj=ccrs.epsg(32630)):
     """
-    Get the coordinates of a specific point in a Delft3D netcdf history output file
+    Gets the coordinates of a specific point in a Delft3D netcdf history output file
+
     :param netcdf_file: str, path to the netcdf file
     :param point: int, index of the point
-    :param proj: cartopy.crs, projection to transform the coordinates from
+    :param srcProj: cartopy.crs, source projection
+
     :return: tuple, (lat, lon)
     """
     with xr.open_dataset(netcdf_file) as ds:
@@ -36,11 +40,13 @@ def getCoord(netcdf_file, point, srcProj=ccrs.epsg(32630)):
 
 
 def datenumToDatetime(datenum):
-    """Converts datenum to datetime
-    Args:
-        datenum: datenum
-        Returns:
-        datetime.datetime"""
+    """
+    Converts a MATLAB datenum to a Python datetime object
+    
+    :param datenum: float or np.array, MATLAB datenum
+    
+    :return: datetime.datetime or list, Python datetime object
+    """
     try:
         iter(datenum)
         is_iter = True
@@ -73,6 +79,16 @@ def datenumToDatetime(datenum):
 
 
 def willmottSkillIndex(data, dataRecon, returnNumDen=False):
+    """
+    Calculates the Willmott skill index between two samples.
+    
+    :param data: array-like, The original sample data.
+    :param dataRecon: array-like, The reconstructed sample data.
+    
+    :param returnNumDen: bool, Whether to return the numerator and denominator of the skill index.
+    
+    :return: float, The Willmott skill index.
+    """
 
     if hasattr(data, 'to_numpy'):
         xo = data.to_numpy()
@@ -98,14 +114,12 @@ def willmottSkillIndex(data, dataRecon, returnNumDen=False):
 
 def ksStatistic(data, dataRecon):
     """
-    Calculate the Kolmogorov-Smirnov (KS) statistic between two samples.
+    Calculates the Kolmogorov-Smirnov (KS) statistic between two samples.
 
-    Parameters:
-    data (array-like): The original sample data.
-    dataRecon (array-like): The reconstructed sample data.
+    :param data: array-like, The original sample data.
+    :param dataRecon: array-like, The reconstructed sample data.
 
-    Returns:
-    float: The KS statistic.
+    :return: float, The KS statistic.
     """
     # Convert data to numpy arrays if they are not already
     xo = np.asarray(data).flatten()
@@ -123,14 +137,12 @@ def ksStatistic(data, dataRecon):
 
 def pearsonCorrCoeff(data, dataRecon):
     """
-    Calculate the Pearson correlation coefficient between two samples.
+    Calculates the Pearson correlation coefficient between two samples.
 
-    Parameters:
-    data (array-like): The original sample data.
-    dataRecon (array-like): The reconstructed sample data.
+    :param data: array-like, The original sample data.
+    :param dataRecon: array-like, The reconstructed sample data.
 
-    Returns:
-    float: The Pearson correlation coefficient.
+    :return: float, The Pearson correlation coefficient.
     """
     # Convert data to numpy arrays if they are not already
     xo = np.asarray(data).flatten()
@@ -144,15 +156,13 @@ def pearsonCorrCoeff(data, dataRecon):
 
 def perkinsSkillScore(data, dataRecon, bins=50):
     """
-    Calculate the Perkins skill score between two samples.
+    Calculates the Perkins skill score between two samples.
 
-    Parameters:
-    data (array-like): The original sample data (observed).
-    dataRecon (array-like): The reconstructed sample data (model).
-    bins (int): The number of bins to use for the histograms/PDFs.
+    :param data: array-like, The original sample data.
+    :param dataRecon: array-like, The reconstructed sample data.
+    :param bins: int, The number of bins to use for the histograms.
 
-    Returns:
-    float: The Perkins skill score.
+    :return: float, The Perkins skill score.
     """
     # Compute histograms for the observed and modeled data
     zo, bin_edges = np.histogram(data, bins=bins, density=True)
@@ -169,6 +179,13 @@ def perkinsSkillScore(data, dataRecon, bins=50):
 
 
 def concatCamel(strings):
+    """
+    Concatenates strings in lowerCamelCase format
+    
+    :param strings: list, list of strings
+    
+    :return: str, concatenated string in lowerCamelCase format
+    """
     if not strings:
         return ''
     
