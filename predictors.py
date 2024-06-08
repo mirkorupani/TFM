@@ -13,6 +13,8 @@ from datetime import timedelta
 import requests
 import xml.etree.ElementTree as ET
 from utide import solve, reconstruct
+
+
 class Predictors():
     """Class to get and load the predictors for the model"""
 
@@ -20,10 +22,22 @@ class Predictors():
     threddsURLMG = "https://mandeo.meteogalicia.es/thredds/dodsC/modelos/WRF_HIST/d02/"
 
 
-    def __init__(self, configFilePath, hisFile=None, folder="predictors"):
+    def __init__(self, config, hisFile=None, folder="predictors"):
+        """
+        Initializes the Predictors class
+        
+        :param config: str, path to the configuration file or dictionary with the configuration
+        :param hisFile: str, path to the netCDF HIS file
+        :param folder: str, folder where the predictors are stored
+        
+        :return: None
+        """
 
-        with open(configFilePath) as f:
-            self.config = json.load(f)
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         
         if hisFile is None:
             folder = self.config["predictors"]["predictorsFolder"]
@@ -47,6 +61,19 @@ class Predictors():
 
 
     def processBatch(self, urls, x, y, batchNumber, write_netcdf=False, folder="predictors"):
+        """
+        Processes a batch of wind data files
+        
+        :param urls: list, URLs of the wind data files
+        :param x: float, x coordinate of the point of interest
+        :param y: float, y coordinate of the point of interest
+        :param batchNumber: int, batch number
+        :param write_netcdf: bool, whether to write the batch to a netCDF file
+        :param folder: str, folder where the batch is stored
+        
+        :return: None
+        """
+
         with xr.open_mfdataset(urls, decode_times=True, chunks="auto", combine="nested", combine_attrs="override", compat="override") as ds:
             # Select variables of interest
             ds = ds[["u", "v", "mslp"]]
@@ -63,6 +90,19 @@ class Predictors():
     
 
     def processInBatches(self, file_urls, x, y, batchSize=100, write_netcdf=False, folder="predictors"):
+        """
+        Processes the wind data in batches
+        
+        :param file_urls: list, URLs of the wind data files
+        :param x: float, x coordinate of the point of interest
+        :param y: float, y coordinate of the point of interest
+        :param batchSize: int, size of the batch
+        :param write_netcdf: bool, whether to write the wind data to a netCDF file
+        :param folder: str, folder where the wind data is stored
+        
+        :return: xarray.Dataset, wind data
+        """
+
         for batch, i in enumerate(range(0, len(file_urls), batchSize)):
             # Check if batch netCDF file exists
             if os.path.exists(os.path.join(folder, f"windData{batch+1}.nc")):
@@ -82,9 +122,17 @@ class Predictors():
 
 
     def getWindData(self, writeNetCDF=True, overwrite=False, provider="meteogalicia", folder="predictors", batchSize=100):
-        """Gets the wind data
+        """
+        Downloads the wind data
+        
         :param writeNetCDF: bool, whether to write the wind data to a netCDF file
-        :return: xarray.Dataset, wind data"""
+        :param overwrite: bool, whether to overwrite the wind data file
+        :param provider: str, wind data provider
+        :param folder: str, folder where the wind data is stored
+        :param batchSize: int, size of the batch
+        
+        :return: xarray.Dataset, wind data
+        """
 
         # Check if file exists
         if not overwrite and os.path.exists(os.path.join(folder, "windData.nc")):
@@ -121,6 +169,13 @@ class Predictors():
 
 
     def processDS(self, ds):
+        """
+        Processes the wind data
+        
+        :param ds: xarray.Dataset, wind data
+        
+        :return: xarray.Dataset, processed wind data
+        """
 
         ds = ds.drop_duplicates("time", keep="last")
         
@@ -140,9 +195,15 @@ class Predictors():
     
 
     def getHydroData(self, writeNetCDF=True, overwrite=False, folder="predictors"):
-        """Downloads the hydrodynamic data
+        """
+        Downloads the hydrodynamic data
+        
         :param writeNetCDF: bool, whether to write the hydrodynamic data to a netCDF file
-        :return: xarray.Dataset, hydrodynamic data"""
+        :param overwrite: bool, whether to overwrite the hydrodynamic data file
+        :param folder: str, folder where the hydrodynamic data is stored
+        
+        :return: xarray.Dataset, hydrodynamic data
+        """
 
         # Check if file exists
         if not overwrite and os.path.exists(os.path.join(folder, "hydroData.nc")):
@@ -243,6 +304,15 @@ class Predictors():
     
 
     def getDischargeData(self, writeNetCDF=True, overwrite=False, folder="predictors"):
+        """
+        Loads the discharge data
+        
+        :param writeNetCDF: bool, whether to write the discharge data to a netCDF file
+        :param overwrite: bool, whether to overwrite the discharge data file
+        :param folder: str, folder where to store the discharge data
+        
+        :return: xarray.Dataset, discharge data
+        """
 
         # Check if file exists
         if not overwrite and os.path.exists(os.path.join(folder, "dischargeData.nc")):
@@ -282,6 +352,15 @@ class Predictors():
 
 
     def getTidalRangeData(self, writeNetCDF=True, overwrite=False, folder="predictors"):
+        """
+        Loads the tidal range data
+        
+        :param writeNetCDF: bool, whether to write the tidal range data to a netCDF file
+        :param overwrite: bool, whether to overwrite the tidal range data file
+        :param folder: str, folder where to store the tidal range data
+        
+        :return: xarray.Dataset, tidal range data
+        """
 
         # Check if file exists
         if not overwrite and os.path.exists(os.path.join(folder, "tidalRangeData.nc")):
@@ -426,6 +505,15 @@ class Predictors():
     
 
     def getFileUrlsFromMonthCatalog(self, catalogUrl, baseURL):
+        """
+        Gets the file URLs from a month catalog
+        
+        :param catalogUrl: str, URL of the catalog
+        :param baseURL: str, base URL of the data
+        
+        :return: list, file URLs
+        """
+        
         fileUrls = []
         namespace = {'ns': 'http://www.unidata.ucar.edu/namespaces/thredds/InvCatalog/v1.0'}
 
