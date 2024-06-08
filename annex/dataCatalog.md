@@ -1,7 +1,7 @@
-## Catálogo de datos océano-meteorológicos de la Bahía de Santander
+# Catálogo de datos océano-meteorológicos de la Bahía de Santander
 
 
-# Viento
+### Viento
 | Proveedor                     | Tipo       | Producto                                    | Actualización - observaciones                                                                                                                                                   | Extensión geográfica                                   | Resolución espacial | Extensión temporal | Resolución temporal | Variables de interés                          | Acceso            |
 |-------------------------------|------------|---------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|---------------------|--------------------|---------------------|------------------------------------------------|-------------------|
 | Aemet open data              | Forecast   | Predicción por municipios horaria          | Cuatro veces al día. La Predicción por horas presenta la información de hora en hora hasta 48 horas. Se generan de forma automática mediante el tratamiento estadístico de los resultados de modelos numéricos de predicción. | Puntual                                               |                     | 1 día              | 1 h                 | Viento (dirección [N, NE, E, SE, S, SO, O, NO, C/Calma] - velocidad) | API               |
@@ -17,7 +17,7 @@
 | Copernicus                   | Reanálisis | ERA5                                        | Updated daily                                                                                                                                                                 | Global                                                | 0,25° (~28 km)      | 1940-present      | 1 h                 | Viento (u - v) - presión                        | API (cdsapi)      |
 
 
-# Hidrodinámica
+### Hidrodinámica
 | Proveedor | Tipo       | Producto                                        | Actualización - observaciones          | Extensión geográfica | Resolución espacial         | Extensión temporal        | Resolución temporal | Variables de interés                                     | Acceso                         |
 |-----------|------------|-------------------------------------------------|----------------------------------------|----------------------|-----------------------------|---------------------------|---------------------|----------------------------------------------------------|--------------------------------|
 | CMEMS     | Forecast   | cmems_mod_ibi_phy_anfc_0.027deg-2D_PT15M-i      | Updated daily.                        | lon: [-19; 5], lat: [26; 56] | 1/36 degree (2-3 km)       | 5 días                     | 15 min              | Niveles - corriente superficial                          | Copernicus Marine Toolbox API |
@@ -28,7 +28,7 @@
 | CFS       | Forecast   | model-cfs_v2_anl_6h_ocnh                        | Updated 4/day: 00, 06, 12, 18UTC      | Global                   | 0,5° (~55 km)               | 9 h                       | 1 h                 | ssh + 3D mean temperature, salinity, zonal and meridional velocity                                                   | Thredds NOAA                   |
 
 
-# Precipitación
+### Precipitación
 | Proveedor        | Tipo       | Producto                                     | Actualización - observaciones                                                                                                                                                  | Extensión geográfica                              | Resolución espacial | Extensión temporal | Resolución temporal | Variables de interés                        | Acceso               |
 |------------------|------------|----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------|---------------------|--------------------|---------------------|---------------------------------------------|----------------------|
 | Aemet open data | Forecast   | Predicción por municipios horaria           | Cuatro veces al día. La Predicción por horas presenta la información de hora en hora hasta 48 horas. Se generan de forma automática mediante el tratamiento estadístico de los resultados de modelos numéricos de predicción.  | Puntual                                          |                     | 1 día              | 1 h                 | Precipitación (probabilidad - cantidad) | API                  |
