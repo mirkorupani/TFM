@@ -9,15 +9,27 @@ class AdaBoost():
 
 
     def __init__(self, config, predMatrix):
-        """Constructor of the class"""
-        with open(config) as f:
-            self.config = json.load(f)
+        """
+        :param config: str, path to the configuration file
+        :param predMatrix: PredictionMatrix, prediction matrix
+        """
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         self.predMatrix = predMatrix
         self.model = self.trainModel()
     
 
     def ksStatistic(self, data, dataRecon):
-        """Calculate the Kolmogorov-Smirnov (KS) statistic between two samples."""
+        """Calculates the Kolmogorov-Smirnov (KS) statistic between two samples.
+        
+        :param data: np.array, original data
+        :param dataRecon: np.array, reconstructed data
+        
+        :return: float, KS statistic
+        """
         xo = np.asarray(data).flatten()
         xs = np.asarray(dataRecon).flatten()
         xo_sorted = np.sort(xo)
@@ -26,14 +38,24 @@ class AdaBoost():
 
 
     def ksScorer(self, estimator, X, y):
-        """Scorer function to calculate KS statistic during grid search."""
+        """Scorer function to calculate KS statistic during grid search.
+        
+        :param estimator: sklearn model, model to evaluate
+        :param X: np.array, features
+        :param y: np.array, target values
+        
+        :return: float, KS statistic
+        """
         yPred = estimator.predict(X)
         return -self.ksStatistic(y, yPred)
     
 
     def trainModel(self):
-        """Trains the AdaBoost model
-        :return: dict, trained AdaBoost models"""
+        """
+        Trains the AdaBoost model
+        
+        :return: dict, trained AdaBoost models
+        """
         
         # Create a time series split cross-validator
         tscv = TimeSeriesSplit(n_splits=self.config["model"]["adaBoost"]["nSplits"])
