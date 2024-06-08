@@ -3,7 +3,7 @@
 
     "predictands": {
         "predictandsFolder": "C:\\TFM\\predictands",
-        "station": 1,
+        "station": 99,
         "hisFile":[
             "C:\\TFM\\input\\recibido_JaviG\\corrientes_bahia\\0_hidros_Mirko\\01_2021\\Santander_his.nc",
             "C:\\TFM\\input\\recibido_JaviG\\corrientes_bahia\\0_hidros_Mirko\\02_2021\\Santander_his.nc"
@@ -77,7 +77,7 @@
         },
 
         "lstm": {
-            "differentNetworks": [["u_x", "u_y", "waterlevel"], ["temperature", "salinity"]],
+            "differentNetworks": [["u_x", "u_y", "waterlevel"], ["temperature"],  ["salinity"]],
             "nTimesteps": 10,
             "stepSize": 1,
             "lstmLayers": {
