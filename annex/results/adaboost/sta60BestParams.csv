@@ -1,0 +1,9 @@
+,u_x,u_y,waterlevel
+estimator__criterion,squared_error,squared_error,squared_error
+estimator__max_depth,5,5,5
+estimator__min_samples_leaf,1,1,1
+estimator__min_samples_split,2,2,2
+estimator__splitter,best,best,best
+learning_rate,0.1,0.1,0.1
+loss,exponential,exponential,exponential
+n_estimators,150,150,150
