@@ -16,6 +16,10 @@ The project adheres to object-oriented programming (OOP) principles, allowing fo
 
 The project structure is designed for flexibility and ease of use. All code is executed from a single main script (`main.py`), which takes parameters from a configuration file (`config.json`). This file contains all adjustable variables and parameters, allowing users to modify it for different case studies without changing the code directly.
 
+### Annex
+
+The `annex` folder contains the obtained results, including metrics, figures, optimal hyperparameters, and other relevant outputs.
+
 ---
 
 ## 🛠 Configuration File (`config.json`)
