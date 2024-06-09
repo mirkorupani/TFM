@@ -1,4 +1,4 @@
-# High-Resolution Hydrodynamic Modeling in the Bay of Santander
+# Analysis of Machine Learning Methodologies for Hydrodynamic Modeling at a Local Scale
 
 This project presents the Master's Thesis by Mirko Rupani, a student in the Master in Data Science program (2023/2024) at the Universidad de Cantabria and the Universidad Internacional Menéndez Pelayo. The thesis was co-directed by Professors Ana Julia Abascal Santillana and Rodrigo García Manzanas.
 
