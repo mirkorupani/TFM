@@ -49,7 +49,7 @@ if __name__ == "__main__":
             for (i, model), var in zip(enumerate(predictStation.model), predictStation.config["model"]["lstm"]["differentNetworks"]):
                 bestHP = model.bestHP
                 if bestHP is not None:
-                    modelName = f"sta{predictStation.config['predictands']['station']}Model{concatCamel(var)}"
+                    modelName = f"{predictStation.config['predictands']['station']}Model{concatCamel(var)}"
                     filePath = f"C:\\TFM\\results\\{predictStation.config['model']['method']}\\sta{modelName}Hyperparameters.json"
                     hp_dict = bestHP.get_config()  # Convert the HyperParameters to a dictionary
                     with open(filePath, "w") as f:
