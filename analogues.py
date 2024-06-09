@@ -10,10 +10,21 @@ class Analogues():
     """Class to apply the analogues method to the prediction matrix"""
 
 
-    def __init__(self, configFilePath, predictionMatrix):
+    def __init__(self, config, predictionMatrix):
+        """
+        Initializes the Analogues class
+
+        :param config: str or dict, path to the configuration file or configuration dictionary
+        :param predictionMatrix: PredictionMatrix, prediction matrix
+
+        :return: None
+        """
         
-        with open(configFilePath) as f:
-            self.config = json.load(f)
+        if isinstance(config, dict):
+            self.config = config
+        else:
+            with open(config) as f:
+                self.config = json.load(f)
         self.predMatrix = predictionMatrix
         self.clustering = self.getClustering()
         self.centroids, self.xAnalogues, self.yAnalogues = self.getAnalogues()
