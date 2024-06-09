@@ -153,7 +153,7 @@ def individualCombinedPlot(y, yPred, variables, startIdx=0, savePath=None, retur
         plt.suptitle(title)
     
     if savePath:
-        plt.savefig(f"{savePath}_{variables[0]}_{variables[1]}.png")
+        plt.savefig(f"{savePath}_{variables[0]}_{variables[1]}.png", bbox_inches='tight')
     
     
     plt.close()
