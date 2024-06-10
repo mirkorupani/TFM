@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map with Points</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map {
+            height: 600px;
+            width: 50%;
+            float: left;
+        }
+        #plot-container {
+            margin-top: 10px;
+            width: 50%;
+            float: right;
+        }
+        .plot {
+            width: 100%;
+            height: 230px;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-heading {
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="output"></div>
+    <div id="plot-container" style="position: relative; margin-top: 10px;">
+        <div id="loading" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <p>Training model...</p>
+            <div class="loader"></div>
+        </div>
+        <div id="plot-ux" class="plot"></div>
+        <div id="plot-uy" class="plot"></div>
+        <div id="plot-waterlevel" class="plot"></div>
+    </div>
+    <script>
+        const map = L.map('map').setView([43.45, -3.79], 10);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+            maxZoom: 20,
+        }).addTo(map);
+
+        axios.get('/points')
+            .then(response => {
+                const points = response.data;
+                points.forEach(point => {
+                    const marker = L.marker([point.latitude, point.longitude]).addTo(map);
+                    marker.bindPopup(`<b>${point.name}</b><br>Click to train model`).openPopup();
+                    marker.on('click', () => {
+                        // If there is a previous output, remove it
+                        document.getElementById('output').innerHTML = '';
+                        document.getElementById('plot-ux').innerHTML = '';
+                        document.getElementById('plot-uy').innerHTML = '';
+                        document.getElementById('plot-waterlevel').innerHTML = '';
+                        document.getElementById('loading').style.display = 'block'; // Show loading spinner
+                        axios.post('/train', { point_id: point.id })
+                            .then(response => {
+                                const result = response.data;
+                                document.getElementById('loading').style.display = 'none'; // Hide loading spinner
+                                document.getElementById('output').innerHTML = `
+                                    <h3 class="result-heading">Training Result for ${point.name}</h3>
+                                `;
+                                const fontSize = 10; // Define the font size once
+                                const titleMargin = 20; // Define the margin for the title once
+
+                                // Plot configuration for u_x
+                                Plotly.newPlot('plot-ux', [{
+                                    x: result.x,
+                                    y: result.y_u_x,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Actual'
+                                }, {
+                                    x: result.x,
+                                    y: result.yPred_u_x,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Predicted'
+                                }], {
+                                    title: { text: 'Actual vs Predicted Time Series (u_x)', font: { size: fontSize } },
+                                    margin: { t: titleMargin },
+                                    xaxis: { title: { text: 'Time', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    yaxis: { title: { text: 'Current (m/s)', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    legend: { font: { size: fontSize } }
+                                });
+
+                                // Plot configuration for u_y
+                                Plotly.newPlot('plot-uy', [{
+                                    x: result.x,
+                                    y: result.y_u_y,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Actual'
+                                }, {
+                                    x: result.x,
+                                    y: result.yPred_u_y,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Predicted'
+                                }], {
+                                    title: { text: 'Actual vs Predicted Time Series (u_y)', font: { size: fontSize } },
+                                    margin: { t: titleMargin },
+                                    xaxis: { title: { text: 'Time', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    yaxis: { title: { text: 'Current (m/s)', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    legend: { font: { size: fontSize } }
+                                });
+
+                                // Plot configuration for waterlevel
+                                Plotly.newPlot('plot-waterlevel', [{
+                                    x: result.x,
+                                    y: result.y_waterlevel,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Actual'
+                                }, {
+                                    x: result.x,
+                                    y: result.yPred_waterlevel,
+                                    mode: 'lines',
+                                    type: 'scatter',
+                                    name: 'Predicted'
+                                }], {
+                                    title: { text: 'Actual vs Predicted Time Series (Water Level)', font: { size: fontSize } },
+                                    margin: { t: titleMargin },
+                                    xaxis: { title: { text: 'Time', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    yaxis: { title: { text: 'Water Level (m)', font: { size: fontSize } }, tickfont: { size: fontSize } },
+                                    legend: { font: { size: fontSize } }
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error training model:', error);
+                            });
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching points:', error);
+            });
+    </script>
+</body>
+</html>
