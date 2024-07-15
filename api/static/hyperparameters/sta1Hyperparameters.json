@@ -1,0 +1,210 @@
+{
+    "space": [
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "numLstmLayers",
+                "default": null,
+                "conditions": [],
+                "min_value": 1,
+                "max_value": 3,
+                "step": 1,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "lstmUnits_0",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Boolean",
+            "config": {
+                "name": "dropoutLstm_0",
+                "default": false,
+                "conditions": []
+            }
+        },
+        {
+            "class_name": "Float",
+            "config": {
+                "name": "dropoutRateLstm_0",
+                "default": 0.1,
+                "conditions": [],
+                "min_value": 0.1,
+                "max_value": 0.5,
+                "step": 0.1,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "numDenseLayers",
+                "default": null,
+                "conditions": [],
+                "min_value": 1,
+                "max_value": 3,
+                "step": 1,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "denseUnits_0",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Choice",
+            "config": {
+                "name": "learningRate",
+                "default": 1e-05,
+                "conditions": [],
+                "values": [
+                    1e-05,
+                    0.0001,
+                    0.001,
+                    0.01
+                ],
+                "ordered": true
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "lstmUnits_1",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Boolean",
+            "config": {
+                "name": "dropoutLstm_1",
+                "default": false,
+                "conditions": []
+            }
+        },
+        {
+            "class_name": "Float",
+            "config": {
+                "name": "dropoutRateLstm_1",
+                "default": 0.1,
+                "conditions": [],
+                "min_value": 0.1,
+                "max_value": 0.5,
+                "step": 0.1,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "denseUnits_1",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "denseUnits_2",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "batch_size",
+                "default": null,
+                "conditions": [],
+                "min_value": 256,
+                "max_value": 1024,
+                "step": 256,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Int",
+            "config": {
+                "name": "lstmUnits_2",
+                "default": null,
+                "conditions": [],
+                "min_value": 50,
+                "max_value": 200,
+                "step": 50,
+                "sampling": "linear"
+            }
+        },
+        {
+            "class_name": "Boolean",
+            "config": {
+                "name": "dropoutLstm_2",
+                "default": false,
+                "conditions": []
+            }
+        },
+        {
+            "class_name": "Float",
+            "config": {
+                "name": "dropoutRateLstm_2",
+                "default": 0.1,
+                "conditions": [],
+                "min_value": 0.1,
+                "max_value": 0.5,
+                "step": 0.1,
+                "sampling": "linear"
+            }
+        }
+    ],
+    "values": {
+        "numLstmLayers": 1,
+        "lstmUnits_0": 150,
+        "dropoutLstm_0": true,
+        "dropoutRateLstm_0": 0.1,
+        "numDenseLayers": 2,
+        "denseUnits_0": 100,
+        "learningRate": 0.01,
+        "lstmUnits_1": 50,
+        "dropoutLstm_1": false,
+        "dropoutRateLstm_1": 0.5,
+        "denseUnits_1": 200,
+        "denseUnits_2": 100,
+        "batch_size": 256,
+        "lstmUnits_2": 50,
+        "dropoutLstm_2": true,
+        "dropoutRateLstm_2": 0.1,
+        "tuner/epochs": 56,
+        "tuner/initial_epoch": 19,
+        "tuner/bracket": 5,
+        "tuner/round": 3,
+        "tuner/trial_id": "0388"
+    }
+}
